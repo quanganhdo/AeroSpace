@@ -25,6 +25,6 @@ if ! ("$bash_bin" --version | grep -q 'version 5'); then
 fi
 
 # Check basic syntax
-zsh -c 'autoload -Uz compinit; compinit; source ./.shell-completion/zsh/_aerospace'
+zsh -f -c 'autoload -Uz compinit; compinit -D -i; source ./.shell-completion/zsh/_aerospace'
 fish -c 'source ./.shell-completion/fish/aerospace.fish'
 "$bash_bin" -c 'source ./.shell-completion/bash/aerospace'

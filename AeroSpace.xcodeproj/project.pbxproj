@@ -24,9 +24,9 @@
 		235CB0D90B7B758492808ED5 /* cliUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = cliUtil.swift; sourceTree = "<group>"; };
 		33E2786CBB01FF70BADB5389 /* _main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = _main.swift; sourceTree = "<group>"; };
 		3B5F3B4ECDAF951A8A087582 /* subcommandDescriptionsGenerated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = subcommandDescriptionsGenerated.swift; sourceTree = "<group>"; };
+		6606D24B4B23E9582CFA3B86 /* AeroSpace */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AeroSpace; path = .; sourceTree = SOURCE_ROOT; };
 		84C35D8E25B61D4D1ADB1851 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8FE45A887100EB70912B07F0 /* default-config.toml */ = {isa = PBXFileReference; path = "default-config.toml"; sourceTree = "<group>"; };
-		97D9073EBD4E3EC9D0C4A214 /* Aerospace */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Aerospace; path = .; sourceTree = SOURCE_ROOT; };
 		CF85755BFF66B59A84F98262 /* AeroSpace.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AeroSpace.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -94,7 +94,7 @@
 		3A1FF786C84025133F96138D /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				97D9073EBD4E3EC9D0C4A214 /* Aerospace */,
+				6606D24B4B23E9582CFA3B86 /* AeroSpace */,
 			);
 			name = Packages;
 			sourceTree = "<group>";

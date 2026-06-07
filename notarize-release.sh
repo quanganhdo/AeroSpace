@@ -87,7 +87,6 @@ xcrun stapler staple "$release_dir/AeroSpace.app"
 xcrun stapler validate "$release_dir/AeroSpace.app"
 /usr/sbin/spctl --assess --type execute --verbose=4 "$release_dir/AeroSpace.app"
 codesign --verify --strict --verbose=2 "$release_dir/bin/aerospace"
-/usr/sbin/spctl --assess --type execute --verbose=4 "$release_dir/bin/aerospace"
 
 /usr/bin/ditto --norsrc -c -k --keepParent "$release_dir" "$release_zip"
 rm "$submission_zip"

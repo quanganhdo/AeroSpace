@@ -54,6 +54,7 @@ If you only plan to build the debug version of AeroSpace, you can run it from th
 **Release build**
 -   `build-release.sh` - Build release build to `.release` dir by using Xcode.
 -   `notarize-release.sh` - Build, Developer ID sign, notarize, staple, and package a release.
+-   `release.sh` - Run the notarized build, publish the GitHub release, and update the Homebrew tap.
 -   `install-from-sources.sh` - Build release build from sources and install it as `aerospace-dev` brew cask.
     This script is "work in progress".
     Use it on your own risk.
@@ -71,11 +72,15 @@ xcrun notarytool store-credentials aerospace-notary \
     --password YOUR_APP_SPECIFIC_PASSWORD
 ```
 
-Then build and notarize using the configured Developer ID identity and Keychain profile:
+To build, notarize, publish, and update the sibling `homebrew-tap` checkout:
 
 ```bash
-./notarize-release.sh
+./release.sh --build-version 0.20.3-Beta-cotton.3
 ```
+
+Use `notarize-release.sh` directly only when producing an unpublished local
+release archive. If publishing fails after the archive was created, rerun
+`release.sh` with the same version and `--skip-tests --skip-build`.
 
 Fork release versions track the canonical AeroSpace version and append a `cotton` revision. For example, changes based on upstream `0.20.3-Beta` are released as `0.20.3-Beta-cotton.1`, `0.20.3-Beta-cotton.2`, and so on.
 

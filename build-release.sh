@@ -4,10 +4,12 @@ source ./script/setup.sh
 
 build_version="0.0.0-SNAPSHOT"
 codesign_identity="aerospace-codesign-certificate"
+timestamp_signatures=0
 while test $# -gt 0; do
     case $1 in
         --build-version) build_version="$2"; shift 2;;
         --codesign-identity) codesign_identity="$2"; shift 2;;
+        --timestamp-signatures) timestamp_signatures=1; shift;;
         *) echo "Unknown option $1" > /dev/stderr; exit 1 ;;
     esac
 done
@@ -38,11 +40,16 @@ rm -rf .release && mkdir .release
 
 xcode_configuration="Release"
 xcodebuild -version
+extra_xcodebuild_args=()
+if test "$timestamp_signatures" = 1; then
+    extra_xcodebuild_args+=("OTHER_CODE_SIGN_FLAGS=--timestamp")
+fi
 xcodebuild-pretty .release/xcodebuild.log clean build \
     -scheme AeroSpace \
     -destination "generic/platform=macOS" \
     -configuration "$xcode_configuration" \
-    -derivedDataPath .xcode-build
+    -derivedDataPath .xcode-build \
+    "${extra_xcodebuild_args[@]}"
 
 git checkout .
 
@@ -53,7 +60,11 @@ cp -r .build/apple/Products/Release/aerospace .release
 ### SIGN CLI ###
 ################
 
-codesign -s "$codesign_identity" .release/aerospace
+codesign_args=(--force --options runtime --sign "$codesign_identity")
+if test "$timestamp_signatures" = 1; then
+    codesign_args+=(--timestamp)
+fi
+codesign "${codesign_args[@]}" .release/aerospace
 
 ################
 ### VALIDATE ###
@@ -102,8 +113,8 @@ check-universal-binary .release/aerospace
 check-contains-hash .release/AeroSpace.app/Contents/MacOS/AeroSpace
 check-contains-hash .release/aerospace
 
-codesign -v .release/AeroSpace.app
-codesign -v .release/aerospace
+codesign --verify --deep --strict --verbose=2 .release/AeroSpace.app
+codesign --verify --strict --verbose=2 .release/aerospace
 
 ############
 ### PACK ###

@@ -53,9 +53,31 @@ If you only plan to build the debug version of AeroSpace, you can run it from th
 
 **Release build**
 -   `build-release.sh` - Build release build to `.release` dir by using Xcode.
+-   `notarize-release.sh` - Build, Developer ID sign, notarize, staple, and package a release.
 -   `install-from-sources.sh` - Build release build from sources and install it as `aerospace-dev` brew cask.
     This script is "work in progress".
     Use it on your own risk.
+
+### Notarized release
+
+The release app uses bundle identifier `do.anh.Aerospace` and enables Hardened Runtime.
+
+Store notarization credentials in Keychain once:
+
+```bash
+xcrun notarytool store-credentials aerospace-notary \
+    --apple-id YOUR_APPLE_ID \
+    --team-id YOUR_TEAM_ID \
+    --password YOUR_APP_SPECIFIC_PASSWORD
+```
+
+Then build and notarize using the configured Developer ID identity and Keychain profile:
+
+```bash
+./notarize-release.sh
+```
+
+Fork release versions track the canonical AeroSpace version and append a `cotton` revision. For example, changes based on upstream `0.20.3-Beta` are released as `0.20.3-Beta-cotton.1`, `0.20.3-Beta-cotton.2`, and so on.
 
 ## IDE
 

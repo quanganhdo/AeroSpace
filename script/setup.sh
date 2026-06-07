@@ -22,6 +22,7 @@ if /bin/test -z "${NUKE_PATH:-}"; then
 
     add-optional-dep-to-bin bash not-outdated-bash # build-shell-completion.sh
     add-optional-dep-to-bin fish # build-shell-completion.sh
+    add-optional-dep-to-bin flowdeck # notarize-release.sh
     add-optional-dep-to-bin rustc # build-shell-completion.sh
     add-optional-dep-to-bin cargo # build-shell-completion.sh
     add-optional-dep-to-bin brew # install-from-sources.sh
@@ -29,6 +30,7 @@ if /bin/test -z "${NUKE_PATH:-}"; then
     add-optional-dep-to-bin bundler # build-docs.sh
     add-optional-dep-to-bin xcbeautify # build-release.sh
     add-optional-dep-to-bin git
+    add-optional-dep-to-bin mise
     add-optional-dep-to-bin swift
     add-optional-dep-to-bin swiftly
 

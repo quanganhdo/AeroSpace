@@ -1,6 +1,6 @@
-public let stableAeroSpaceAppId: String = "bobko.aerospace"
+public let stableAeroSpaceAppId: String = "do.anh.Aerospace"
 #if DEBUG
-    public let aeroSpaceAppId: String = "bobko.aerospace.debug"
+    public let aeroSpaceAppId: String = "do.anh.Aerospace.debug"
     public let aeroSpaceAppName: String = "AeroSpace-Debug"
 #else
     public let aeroSpaceAppId: String = stableAeroSpaceAppId

@@ -49,7 +49,7 @@ xcodebuild-pretty .release/xcodebuild.log clean build \
     -destination "generic/platform=macOS" \
     -configuration "$xcode_configuration" \
     -derivedDataPath .xcode-build \
-    "${extra_xcodebuild_args[@]}"
+    ${extra_xcodebuild_args[@]+"${extra_xcodebuild_args[@]}"}
 
 git checkout .
 

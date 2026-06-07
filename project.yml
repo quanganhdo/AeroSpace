@@ -12,6 +12,21 @@ configs:
   Release: release
 
 targets:
+  AeroSpaceCli:
+    type: tool
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - "Sources/Cli"
+    dependencies:
+      - package: AeroSpacePackage
+        product: Common
+    settings:
+      base:
+        PRODUCT_NAME: aerospace
+        SWIFT_VERSION: 6.2
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+
   AeroSpace:
     type: application
     platform: macOS

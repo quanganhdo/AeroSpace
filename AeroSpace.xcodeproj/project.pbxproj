@@ -7,18 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		12D7580226A87F38CD899F26 /* cliUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235CB0D90B7B758492808ED5 /* cliUtil.swift */; };
 		238EF26CAAADD1FE11312D7C /* default-config.toml in Resources */ = {isa = PBXBuildFile; fileRef = 8FE45A887100EB70912B07F0 /* default-config.toml */; };
+		70AF1BAB3CA87D040C2A1871 /* subcommandDescriptionsGenerated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5F3B4ECDAF951A8A087582 /* subcommandDescriptionsGenerated.swift */; };
 		852F88894A3B9FC385563665 /* AppBundle in Frameworks */ = {isa = PBXBuildFile; productRef = 018E55979F61DA6DA6DCB442 /* AppBundle */; };
 		883A44C8295FECF49F94269D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 84C35D8E25B61D4D1ADB1851 /* Assets.xcassets */; };
 		C40E0D9C06086C58955237D9 /* AeroSpaceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C104E927E079E60C91AE3E /* AeroSpaceApp.swift */; };
+		EF73DB832A9C8CB96B7825DD /* _main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E2786CBB01FF70BADB5389 /* _main.swift */; };
+		FDF498327F5F87E46B00A969 /* Common in Frameworks */ = {isa = PBXBuildFile; productRef = 0EBA57433A1886920A414A12 /* Common */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		04E140A09A2933BEE7A5C2D5 /* AeroSpaceCli */ = {isa = PBXFileReference; includeInIndex = 0; path = AeroSpaceCli; sourceTree = BUILT_PRODUCTS_DIR; };
 		09685297933511208058F7CF /* AeroSpace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AeroSpace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		18C104E927E079E60C91AE3E /* AeroSpaceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AeroSpaceApp.swift; sourceTree = "<group>"; };
-		6606D24B4B23E9582CFA3B86 /* AeroSpace */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AeroSpace; path = .; sourceTree = SOURCE_ROOT; };
+		235CB0D90B7B758492808ED5 /* cliUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = cliUtil.swift; sourceTree = "<group>"; };
+		33E2786CBB01FF70BADB5389 /* _main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = _main.swift; sourceTree = "<group>"; };
+		3B5F3B4ECDAF951A8A087582 /* subcommandDescriptionsGenerated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = subcommandDescriptionsGenerated.swift; sourceTree = "<group>"; };
 		84C35D8E25B61D4D1ADB1851 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8FE45A887100EB70912B07F0 /* default-config.toml */ = {isa = PBXFileReference; path = "default-config.toml"; sourceTree = "<group>"; };
+		97D9073EBD4E3EC9D0C4A214 /* Aerospace */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Aerospace; path = .; sourceTree = SOURCE_ROOT; };
 		CF85755BFF66B59A84F98262 /* AeroSpace.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AeroSpace.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -28,6 +36,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				852F88894A3B9FC385563665 /* AppBundle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		40023FC3FE2ACA7BC5F35B06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FDF498327F5F87E46B00A969 /* Common in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,10 +68,22 @@
 			path = resources;
 			sourceTree = "<group>";
 		};
+		2D24EF98C810D1F6AE4DFF83 /* Cli */ = {
+			isa = PBXGroup;
+			children = (
+				33E2786CBB01FF70BADB5389 /* _main.swift */,
+				235CB0D90B7B758492808ED5 /* cliUtil.swift */,
+				3B5F3B4ECDAF951A8A087582 /* subcommandDescriptionsGenerated.swift */,
+			);
+			name = Cli;
+			path = Sources/Cli;
+			sourceTree = "<group>";
+		};
 		393942C56466FDBBE35F9EC0 = {
 			isa = PBXGroup;
 			children = (
 				6F6BCFA26BF3E35072EF2C77 /* AeroSpaceApp */,
+				2D24EF98C810D1F6AE4DFF83 /* Cli */,
 				0E0109AE5F7881520B0D2384 /* config-examples */,
 				3A1FF786C84025133F96138D /* Packages */,
 				21E15F84087042E63C0150AB /* resources */,
@@ -66,7 +94,7 @@
 		3A1FF786C84025133F96138D /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				6606D24B4B23E9582CFA3B86 /* AeroSpace */,
+				97D9073EBD4E3EC9D0C4A214 /* Aerospace */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -75,6 +103,7 @@
 			isa = PBXGroup;
 			children = (
 				09685297933511208058F7CF /* AeroSpace.app */,
+				04E140A09A2933BEE7A5C2D5 /* AeroSpaceCli */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,6 +120,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1EA38266F360C6A01A4FB8FB /* AeroSpaceCli */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ED6568A99B26C268919D3420 /* Build configuration list for PBXNativeTarget "AeroSpaceCli" */;
+			buildPhases = (
+				28E35866C3E1377B95808852 /* Sources */,
+				40023FC3FE2ACA7BC5F35B06 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AeroSpaceCli;
+			packageProductDependencies = (
+				0EBA57433A1886920A414A12 /* Common */,
+			);
+			productName = AeroSpaceCli;
+			productReference = 04E140A09A2933BEE7A5C2D5 /* AeroSpaceCli */;
+			productType = "com.apple.product-type.tool";
+		};
 		B00BE37A79171B0EE995EB83 /* AeroSpace */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1C34EA41A1F045E016D1944D /* Build configuration list for PBXNativeTarget "AeroSpace" */;
@@ -140,6 +188,7 @@
 			projectRoot = "";
 			targets = (
 				B00BE37A79171B0EE995EB83 /* AeroSpace */,
+				1EA38266F360C6A01A4FB8FB /* AeroSpaceCli */,
 			);
 		};
 /* End PBXProject section */
@@ -157,6 +206,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		28E35866C3E1377B95808852 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF73DB832A9C8CB96B7825DD /* _main.swift in Sources */,
+				12D7580226A87F38CD899F26 /* cliUtil.swift in Sources */,
+				70AF1BAB3CA87D040C2A1871 /* subcommandDescriptionsGenerated.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D7A18303C03F2CB26F7BB54B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -252,6 +311,22 @@
 			};
 			name = Debug;
 		};
+		61BE751CF07ED7538E0A787A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_NAME = aerospace;
+				SDKROOT = macosx;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.2;
+			};
+			name = Debug;
+		};
 		A991F90908318BCD1655E904 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -333,6 +408,22 @@
 			};
 			name = Release;
 		};
+		DA23EA8121A81E64171565BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_NAME = aerospace;
+				SDKROOT = macosx;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -354,6 +445,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		ED6568A99B26C268919D3420 /* Build configuration list for PBXNativeTarget "AeroSpaceCli" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61BE751CF07ED7538E0A787A /* Debug */,
+				DA23EA8121A81E64171565BA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -367,6 +467,10 @@
 		018E55979F61DA6DA6DCB442 /* AppBundle */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppBundle;
+		};
+		0EBA57433A1886920A414A12 /* Common */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Common;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

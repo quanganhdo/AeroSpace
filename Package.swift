@@ -20,6 +20,7 @@ let package = Package(
         .executable(name: "AeroSpaceApp", targets: ["AeroSpaceApp"]),
         // We only need to expose this as a product for xcode
         .library(name: "AppBundle", targets: ["AppBundle"]),
+        .library(name: "Common", targets: ["Common"]),
     ],
     dependencies: [
         .package(path: "./ShellParserGenerated"),

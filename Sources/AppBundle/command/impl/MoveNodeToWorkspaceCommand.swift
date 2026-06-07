@@ -40,7 +40,7 @@ func moveWindowToWorkspace(_ window: Window, _ targetWorkspace: Workspace, _ io:
     let targetContainer: NonLeafTreeNodeObject = window.isFloating ? targetWorkspace : targetWorkspace.rootTilingContainer
 
     if let targetContainer = targetContainer as? TilingContainer, targetContainer.layout == .dwindle {
-        let data = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(targetWorkspace, window: window)
+        let data = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(targetWorkspace)
         window.bind(to: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
         if focusFollowsWindow {
             _ = window.focusWindow()

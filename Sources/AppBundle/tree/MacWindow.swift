@@ -227,7 +227,7 @@ private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, w
     }
 
     if workspace.rootTilingContainer.layout == .dwindle {
-        return unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace, window: window)
+        return unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace)
     }
 
     let mruWindow = workspace.mostRecentWindowRecursive
@@ -247,7 +247,7 @@ private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, w
 }
 
 @MainActor
-func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Workspace, window: Window?) -> BindingData {
+func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Workspace) -> BindingData {
     let rootTilingContainer = workspace.rootTilingContainer
 
     if rootTilingContainer.children.isEmpty {

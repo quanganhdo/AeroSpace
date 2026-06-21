@@ -32,8 +32,7 @@ mise exec -- ./build-shell-completion.sh
     --build-version "$build_version" \
     --codesign-identity "$codesign_identity" \
     --generate-git-hash \
-    --ignore-cmd-help \
-    --ignore-shell-parser
+    --ignore-cmd-help
 
 build_dir=".notarization-build"
 app_path="$build_dir/Build/Products/Release/AeroSpace.app"
@@ -43,7 +42,7 @@ release_zip=".release/AeroSpace-v$build_version.zip"
 submission_zip=".release/AeroSpace-v$build_version-notarization.zip"
 
 restore_development_generated_files() {
-    ./generate.sh --ignore-cmd-help --ignore-shell-parser
+    ./generate.sh --ignore-cmd-help
 }
 trap restore_development_generated_files EXIT
 

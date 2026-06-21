@@ -2,7 +2,6 @@ public struct MoveNodeToWorkspaceCmdArgs: CmdArgs {
     /*conforms*/ public var commonState: CmdArgsCommonState
     public static let parser: CmdParser<Self> = .init(
         kind: .moveNodeToWorkspace,
-        allowInConfig: true,
         help: move_node_to_workspace_help_generated,
         flags: [
             "--wrap-around": ArgParser(\._wrapAround, constSubArgParserFun(true)),
@@ -13,7 +12,10 @@ public struct MoveNodeToWorkspaceCmdArgs: CmdArgs {
             "--stdin": ArgParser(\.explicitStdinFlag, constSubArgParserFun(true)),
             "--no-stdin": ArgParser(\.explicitStdinFlag, constSubArgParserFun(false)),
         ],
-        posArgs: [newMandatoryPosArgParser(\.target, parseWorkspaceTarget, placeholder: workspaceTargetPlaceholder)],
+        posArgs: [
+            dashDashArg(mandatory: false),
+            newMandatoryPosArgParser(\.target, parseWorkspaceTarget, placeholder: workspaceTargetPlaceholder),
+        ],
         conflictingOptions: [
             ["--stdin", "--no-stdin"],
         ],

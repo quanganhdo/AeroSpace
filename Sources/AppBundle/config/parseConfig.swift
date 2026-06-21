@@ -4,8 +4,24 @@ import HotKey
 import TOMLDecoder
 import OrderedCollections
 
+struct ReadConfigResult {
+    let configUrl: URL
+    let parseConfigResult: ParseConfigResult
+
+    @MainActor static func fatal(configUrl: URL, message: String) -> Self {
+        ReadConfigResult(
+            configUrl: configUrl,
+            parseConfigResult: ParseConfigResult(
+                config: defaultConfig,
+                errors: [.init(.emptyRoot, message, preventConfigReload: true)],
+                warnings: [],
+            ),
+        )
+    }
+}
+
 @MainActor
-func readConfig(forceConfigUrl: URL? = nil) -> Result<(Config, URL), String> {
+func readConfig(forceConfigUrl: URL?) -> ReadConfigResult {
     let configUrl: URL
     if let forceConfigUrl {
         configUrl = forceConfigUrl
@@ -18,27 +34,17 @@ func readConfig(forceConfigUrl: URL? = nil) -> Result<(Config, URL), String> {
                     Ambiguous config error. Several configs found:
                     \(candidates.map(\.path).joined(separator: "\n"))
                     """
-                return .failure(msg)
+                return .fatal(configUrl: defaultConfigUrl, message: msg)
         }
     }
     let configStr: String
     do {
         configStr = try String(contentsOf: configUrl, encoding: .utf8)
     } catch {
-        return .failure("Can't read contents of \(configUrl.path.singleQuoted) as a utf8 string: \(error.localizedDescription)")
+        let msg = "Can't read contents of \(configUrl.path.singleQuoted) as a utf8 string: \(error.localizedDescription)"
+        return .fatal(configUrl: configUrl, message: msg)
     }
-    let result = parseConfig(configStr)
-
-    if result.errors.isEmpty {
-        return .success((result.config, configUrl))
-    } else {
-        let msg = """
-            Failed to parse \(configUrl.absoluteURL.path)
-
-            \(result.errors.map(\.description).joined(separator: "\n\n"))
-            """
-        return .failure(msg)
-    }
+    return ReadConfigResult(configUrl: configUrl, parseConfigResult: parseConfig(configStr))
 }
 
 struct ConfigParseDiagnostic: Error, Equatable {
@@ -47,18 +53,24 @@ struct ConfigParseDiagnostic: Error, Equatable {
     let preventConfigReload: Bool // for severe config errors (like TOML parse error)
 
     public init(_ backtrace: ConfigBacktrace, _ message: String, preventConfigReload: Bool = false) {
+        check(!message.isEmpty)
         self.backtrace = backtrace
         self.message = message
         self.preventConfigReload = preventConfigReload
     }
 
-    func description() -> String {
+    func description(_ severity: Severity) -> String {
         let backtraceDesc = backtrace.description
         // todo Make 'split' + flatten normalization prettier
         return switch backtraceDesc.isEmpty {
-            case true: "[ERROR] \(message)"
-            case false: "[ERROR] \(backtraceDesc): \(message)"
+            case true: "[\(severity.rawValue)] \(message)"
+            case false: "[\(severity.rawValue)] \(backtraceDesc): \(message)"
         }
+    }
+
+    enum Severity: String {
+        case warning = "WARNING"
+        case error = "ERROR"
     }
 }
 
@@ -68,27 +80,32 @@ extension ParserProtocol {
     func transformRawConfig(_ raw: S,
                             _ value: OrderedJson,
                             _ backtrace: ConfigBacktrace,
-                            _ errors: inout [ConfigParseDiagnostic]) -> S
+                            _ c: inout ConfigParserContext) -> S
     {
-        if let value = parse(value, backtrace, &errors).getOrNil(appendErrorTo: &errors) {
+        if let value = parse(value, backtrace, &c).getOrNil(appendErrorTo: &c.errors) {
             return raw.copy(keyPath, value)
         }
         return raw
     }
 }
 
+struct ConfigParserContext {
+    var configVersion: ConfigVersion
+    var errors: [ConfigParseDiagnostic]
+}
+
 protocol ParserProtocol<S>: Sendable {
     associatedtype T
     associatedtype S where S: ConvenienceCopyable
     var keyPath: SendableWritableKeyPath<S, T> { get }
-    var parse: @Sendable (OrderedJson, ConfigBacktrace, inout [ConfigParseDiagnostic]) -> ParsedConfig<T> { get }
+    var parse: @Sendable (OrderedJson, ConfigBacktrace, inout ConfigParserContext) -> ParsedConfig<T> { get }
 }
 
 struct Parser<S: ConvenienceCopyable, T>: ParserProtocol {
     let keyPath: SendableWritableKeyPath<S, T>
-    let parse: @Sendable (OrderedJson, ConfigBacktrace, inout [ConfigParseDiagnostic]) -> ParsedConfig<T>
+    let parse: @Sendable (OrderedJson, ConfigBacktrace, inout ConfigParserContext) -> ParsedConfig<T>
 
-    init(_ keyPath: SendableWritableKeyPath<S, T>, _ parse: @escaping @Sendable (OrderedJson, ConfigBacktrace, inout [ConfigParseDiagnostic]) -> T) {
+    init(_ keyPath: SendableWritableKeyPath<S, T>, _ parse: @escaping @Sendable (OrderedJson, ConfigBacktrace, inout ConfigParserContext) -> T) {
         self.keyPath = keyPath
         self.parse = { raw, backtrace, errors -> ParsedConfig<T> in .success(parse(raw, backtrace, &errors)) }
     }
@@ -100,6 +117,7 @@ struct Parser<S: ConvenienceCopyable, T>: ParserProtocol {
 }
 
 private let keyMappingConfigRootKey = "key-mapping"
+private let configVersionConfigRootKey = "config-version"
 private let modeConfigRootKey = "mode"
 private let persistentWorkspacesKey = "persistent-workspaces"
 
@@ -107,14 +125,14 @@ private let persistentWorkspacesKey = "persistent-workspaces"
 // 1. Does it make sense to have different value
 // 2. Prefer commands and commands flags over toml options if possible
 private let configParser: [String: any ParserProtocol<Config>] = [
-    "config-version": Parser(\.configVersion, parseConfigVersion),
+    configVersionConfigRootKey: Parser(\.configVersion, skipParsing(Config().configVersion)), // Parsed manually
 
-    "after-login-command": Parser(\.afterLoginCommand, parseAfterLoginCommand),
-    "after-startup-command": Parser(\.afterStartupCommand) { parseCommandOrCommands($0).toParsedConfig($1) },
+    "after-login-command": Parser(\._afterLoginCommand, parseDeprecatedAfterLoginCommand),
+    "after-startup-command": Parser(\.afterStartupCommand, parseShellOfCommandsForConfig),
 
-    "on-focus-changed": Parser(\.onFocusChanged) { parseCommandOrCommands($0).toParsedConfig($1) },
-    "on-mode-changed": Parser(\.onModeChanged) { parseCommandOrCommands($0).toParsedConfig($1) },
-    "on-focused-monitor-changed": Parser(\.onFocusedMonitorChanged) { parseCommandOrCommands($0).toParsedConfig($1) },
+    "on-focus-changed": Parser(\.onFocusChanged, parseShellOfCommandsForConfig),
+    "on-mode-changed": Parser(\.onModeChanged, parseShellOfCommandsForConfig),
+    "on-focused-monitor-changed": Parser(\.onFocusedMonitorChanged, parseShellOfCommandsForConfig),
     // "on-focused-workspace-changed": Parser(\.onFocusedWorkspaceChanged, { parseCommandOrCommands($0).toParsedConfig($1) }),
 
     "enable-normalization-flatten-containers": Parser(\.enableNormalizationFlattenContainers, parseBool),
@@ -143,26 +161,17 @@ private let configParser: [String: any ParserProtocol<Config>] = [
     "indent-for-nested-containers-with-the-same-orientation": Parser(\._indentForNestedContainersWithTheSameOrientation, parseIndentForNestedContainersWithTheSameOrientation),
 ]
 
-extension ParsedCmd where T == any Command {
-    func toEither() -> Parsed<T> {
+extension ParsedCmd {
+    func toResult() -> Parsed<T> {
         return switch self {
-            case .cmd(let a):
-                a.info.allowInConfig
-                    ? .success(a)
-                    : .failure("Command '\(a.info.kind.rawValue)' cannot be used in config")
+            case .cmd(let a): .success(a)
             case .help(let a): .failure(a)
             case .failure(let a): .failure(a.msg)
         }
     }
 }
 
-extension Command {
-    fileprivate var isMacOsNativeCommand: Bool { // Problem ID-B6E178F2
-        self is MacosNativeMinimizeCommand || self is MacosNativeFullscreenCommand
-    }
-}
-
-func parseAfterLoginCommand(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<[any Command]> {
+func parseDeprecatedAfterLoginCommand(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<[any Command]> {
     if let array = raw.asArrayOrNil, array.count == 0 {
         return .success([])
     }
@@ -170,19 +179,23 @@ func parseAfterLoginCommand(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) ->
     return .failure(.init(backtrace, msg))
 }
 
-func parseCommandOrCommands(_ raw: OrderedJson) -> Parsed<[any Command]> {
+func parseShellOfCommandsForConfig(_ raw: OrderedJson, _ backtrace: ConfigBacktrace, _ c: inout ConfigParserContext) -> Shell<any Command> {
     if let rawString = raw.asStringOrNil {
-        return parseCommand(rawString).toEither().map { [$0] }
+        return parseCommand(rawString).toResult().toParsedConfig(backtrace).getOrNil(appendErrorTo: &c.errors) ?? .empty
     } else if let rawArray = raw.asArrayOrNil {
-        let commands: Parsed<[any Command]> = (0 ..< rawArray.count).mapAllOrFailure { index in
-            let rawString: String = rawArray[index].asStringOrNil ?? expectedActualTypeError(expected: .string, actual: rawArray[index].tomlType)
-            return parseCommand(rawString).toEither()
+        var result = [Shell<any Command>]()
+        for (index, elem) in rawArray.enumerated() {
+            let backtrace = backtrace + .index(index)
+            if let elem = elem.asStringOrNil {
+                result.append(parseCommand(elem).toResult().toParsedConfig(backtrace).getOrNil(appendErrorTo: &c.errors) ?? .empty)
+            } else {
+                c.errors.append(.init(backtrace, expectedActualTypeError(expected: .string, actual: elem.tomlType)))
+            }
         }
-        return commands.filter("macos-native-* commands are only allowed to be the last commands in the list") {
-            !$0.dropLast().contains(where: { $0.isMacOsNativeCommand })
-        }
+        return .newCompound(result, Shell<any Command>.seq)
     } else {
-        return .failure(expectedActualTypeError(expected: [.string, .array], actual: raw.tomlType))
+        c.errors.append(.init(backtrace, expectedActualTypeError(expected: [.string, .array], actual: raw.tomlType)))
+        return .empty
     }
 }
 
@@ -215,58 +228,62 @@ func tomlAnyToOrderedJsonRecursive(
 
 struct ParseConfigResult {
     let config: Config
-    let errors: [String]
-    let allowReloadConfig: Bool
+    let errors: [ConfigParseDiagnostic]
+    let warnings: [ConfigParseDiagnostic]
+
+    var allowReloadConfig: Bool { errors.allSatisfy { !$0.preventConfigReload } }
 }
 
 @MainActor func parseConfig(_ rawToml: String) -> ParseConfigResult {
-    let result = _parseConfig(rawToml)
-    return ParseConfigResult(
-        config: result.config,
-        errors: result.errors.map { $0.description() },
-        allowReloadConfig: result.errors.allSatisfy { !$0.preventConfigReload },
-    )
-}
-
-@MainActor private func _parseConfig(_ rawToml: String) -> (config: Config, errors: [ConfigParseDiagnostic]) {
-    var errors: [ConfigParseDiagnostic] = []
+    var errors = NonCopyable([ConfigParseDiagnostic]())
+    var warnings = [ConfigParseDiagnostic]()
 
     let rawTable: OrderedJson.JsonDict
     do {
         let dict: [String: Any] = try .init(try TOMLTable(source: rawToml))
-        let json = tomlAnyToOrderedJsonRecursive(any: dict, .emptyRoot, &errors)
+        let json = tomlAnyToOrderedJsonRecursive(any: dict, .emptyRoot, &errors.value)
         switch json {
             case .dict(let dict): rawTable = dict
             default: // dead code
                 let msg = "Config parsing error: the top level type must be a TOML Table. But got: \((json ?? .null).tomlType)"
-                errors.append(.init(.emptyRoot, msg, preventConfigReload: true))
+                errors.value.append(.init(.emptyRoot, msg, preventConfigReload: true))
                 rawTable = [:]
         }
     } catch {
-        errors.append(.init(.emptyRoot, error.description, preventConfigReload: true))
+        errors.value.append(.init(.emptyRoot, error.description, preventConfigReload: true))
         rawTable = [:]
     }
 
-    var config = rawTable.parseTable(Config(), configParser, .emptyRoot, &errors)
+    let configVersion: ConfigVersion =
+        switch rawTable[configVersionConfigRootKey].flatMap({ parseConfigVersion($0, .rootKey(configVersionConfigRootKey)).getOrNil(appendErrorTo: &errors.value) }) {
+            case let it?: it
+            case nil: .min
+        }
 
-    if let mapping = rawTable[keyMappingConfigRootKey].flatMap({ parseKeyMapping($0, .rootKey(keyMappingConfigRootKey), &errors) }) {
+    var c = ConfigParserContext(configVersion: configVersion, errors: errors.consume())
+
+    var config = rawTable.parseTable(Config(), configParser, .emptyRoot, &c)
+    config.configVersion = configVersion
+
+    if let mapping = rawTable[keyMappingConfigRootKey].flatMap({ parseKeyMapping($0, .rootKey(keyMappingConfigRootKey), &c) }) {
         config.keyMapping = mapping
     }
 
     // Parse modeConfigRootKey after keyMappingConfigRootKey
-    if let modes = rawTable[modeConfigRootKey].flatMap({ parseModes($0, .rootKey(modeConfigRootKey), &errors, config.keyMapping.resolve()) }) {
+    if let modes = rawTable[modeConfigRootKey].flatMap({ parseModes($0, .rootKey(modeConfigRootKey), &c, config.keyMapping.resolve()) }) {
         config.modes = modes
     }
 
-    if config.configVersion <= 1 {
+    if config.configVersion <= ._1 {
         if rawTable.keys.contains(persistentWorkspacesKey) {
-            errors += [.init(.rootKey(persistentWorkspacesKey), "This config option is only available since 'config-version = 2'")]
+            c.errors += [.init(.rootKey(persistentWorkspacesKey), "This config option is only available since 'config-version = 2'")]
         }
         config.persistentWorkspaces = (config.modes.values.lazy
             .flatMap { (mode: Mode) -> [HotkeyBinding] in Array(mode.bindings.values) }
             .flatMap { (binding: HotkeyBinding) -> [String] in
-                binding.commands.filterIsInstance(of: WorkspaceCommand.self).compactMap { $0.args.target.val.workspaceNameOrNil()?.raw } +
-                    binding.commands.filterIsInstance(of: MoveNodeToWorkspaceCommand.self).compactMap { $0.args.target.val.workspaceNameOrNil()?.raw }
+                let commands = binding.commands.flatten()
+                return commands.filterIsInstance(of: WorkspaceCommand.self).compactMap { $0.args.target.val.workspaceNameOrNil()?.raw } +
+                    commands.filterIsInstance(of: MoveNodeToWorkspaceCommand.self).compactMap { $0.args.target.val.workspaceNameOrNil()?.raw }
             }
             + (config.workspaceToMonitorForceAssignment).keys)
             .toOrderedSet()
@@ -274,10 +291,10 @@ struct ParseConfigResult {
 
     if config.enableNormalizationFlattenContainers {
         let containsSplitCommand = config.modes.values.lazy.flatMap { $0.bindings.values }
-            .flatMap { $0.commands }
+            .flatMap { $0.commands.flatten() }
             .contains { $0 is SplitCommand }
         if containsSplitCommand {
-            errors += [.init(
+            c.errors += [.init(
                 .emptyRoot, // todo Make 'split' + flatten normalization prettier
                 """
                 The config contains:
@@ -290,7 +307,13 @@ struct ParseConfigResult {
             )]
         }
     }
-    return (config, errors)
+    if config.configVersion < .max {
+        let msg = "The current 'config-version = \(config.configVersion)' is outdated. " +
+            "Please consider migrating to 'config-version = \(ConfigVersion.max)'. " +
+            "See https://nikitabobko.github.io/AeroSpace/guide#config-version for the migration guide."
+        warnings.append(.init(.emptyRoot, msg))
+    }
+    return ParseConfigResult(config: config, errors: c.errors, warnings: warnings)
 }
 
 func parseIndentForNestedContainersWithTheSameOrientation(_ _: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<Void> {
@@ -298,11 +321,9 @@ func parseIndentForNestedContainersWithTheSameOrientation(_ _: OrderedJson, _ ba
     return .failure(.init(backtrace, msg))
 }
 
-func parseConfigVersion(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<Int> {
-    let min = 1
-    let max = 2
-    return parseInt(raw, backtrace)
-        .filter(.init(backtrace, "config-version must be in [\(min), \(max)] range")) { (min ... max).contains($0) }
+func parseConfigVersion(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<ConfigVersion> {
+    parseInt(raw, backtrace)
+        .flatMap { ConfigVersion.init(rawValue: $0).orFailure(.init(backtrace, "config-version must be in [\(ConfigVersion.min), \(ConfigVersion.max)] range")) }
 }
 
 func parseInt(_ raw: OrderedJson, _ backtrace: ConfigBacktrace) -> ParsedConfig<Int> {
@@ -348,13 +369,13 @@ func parseTable<T: ConvenienceCopyable>(
     _ initial: T,
     _ fieldsParser: [String: any ParserProtocol<T>],
     _ backtrace: ConfigBacktrace,
-    _ errors: inout [ConfigParseDiagnostic],
+    _ c: inout ConfigParserContext,
 ) -> T {
     switch raw {
         case .dict(let table):
-            return table.parseTable(initial, fieldsParser, backtrace, &errors)
+            return table.parseTable(initial, fieldsParser, backtrace, &c)
         default:
-            errors.append(expectedActualTypeDiagnostic(expected: .table, actual: raw.tomlType, backtrace))
+            c.errors.append(expectedActualTypeDiagnostic(expected: .table, actual: raw.tomlType, backtrace))
             return initial
     }
 }
@@ -456,15 +477,15 @@ extension OrderedJson.JsonDict {
         _ initial: T,
         _ fieldsParser: [String: any ParserProtocol<T>],
         _ backtrace: ConfigBacktrace,
-        _ errors: inout [ConfigParseDiagnostic],
+        _ c: inout ConfigParserContext,
     ) -> T {
         var raw = initial
 
         for (key, value) in self {
             let backtrace: ConfigBacktrace = backtrace + .key(key)
             switch fieldsParser[key] {
-                case let parser?: raw = parser.transformRawConfig(raw, value, backtrace, &errors)
-                case nil: errors.append(unknownKeyDiagnostic(backtrace))
+                case let parser?: raw = parser.transformRawConfig(raw, value, backtrace, &c)
+                case nil: c.errors.append(unknownKeyDiagnostic(backtrace))
             }
         }
 

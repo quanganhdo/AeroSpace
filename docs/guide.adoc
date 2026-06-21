@@ -150,7 +150,7 @@ There are two ways on how you can use commands:
     # Bind alt-1 key to switch to workspace 1
     alt-1 = 'workspace 1'
     # Or bind a sequence of commands
-    alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
+    alt-shift-1 = 'move-node-to-workspace 1; workspace 1'
 ----
 . Run commands in CLI. Open up a Terminal.app and type:
 +
@@ -160,6 +160,36 @@ aerospace workspace 1
 ----
 
 For the list of available commands see: xref:commands.adoc[]
+
+[#shell]
+=== Shell
+
+AeroSpace reimplements a small subset of Shell syntax.
+Namely, the well-known operators: `;`, `||`, `&&`, `|`, and parenthesis to specify the precedence (listed in the precedence order).
+
+That is what allows you to combine commands and run them in sequence or pipe one into another:
+
+[source,toml]
+----
+[mode.main.binding]
+    alt-shift-1 = 'move-node-to-workspace 1; workspace 1'
+
+    alt-right = 'list-workspaces --monitor focused --empty no | workspace --stdin next'
+----
+
+This Shell-like string is exactly what you pass to the xref:./commands.adoc#eval[eval command] argument.
+
+[NOTE]
+====
+*(1)* In traditional Shell, `||` and `&&` have the same precedence and are left associative,
+so `foo || bar && baz` parses as `(foo || bar) && baz`.
+AeroSpace's shell syntax diverges from that dubious design decision.
+
+Instead, it follows the hopefully more intuitive precedence rules, where `&&` operator has bigger binding power,
+so the very same command above parses as `foo || (bar && baz)`.
+
+*(2)* In AeroSpace, the pipe operator `|` semantic matches `set -o pipefail` from traditional shells.
+====
 
 [#key-mapping]
 === Keyboard layouts and key mapping
@@ -184,6 +214,44 @@ If you use different layout, different alphabet, or you just want to have a fanc
 ----
 [key-mapping]
     preset = 'dvorak'  # or 'colemak'
+----
+
+[#config-version]
+=== config-version
+
+`config-version` is a mechanism for introducing breaking changes to AeroSpace.
+
+Omitting `config-version` is equivalent to `config-version = 1` (the lowest possible version).
+The currently highest possible version is 2.
+It is recommended to use that version.
+
+If `config-version` is lower than the highest possible, xref:./commands.adoc#reload-config[reload-config] will emit a warning to stderr.
+
+[#config-version-2]
+==== config-version = 2
+
+By specifying `config-version = 2`, you opt-in to the following behavior:
+
+* You unlock the possibility to specify `persistent-workspaces` config option in your config explicitly.
+* The fallback value of `persistent-workspaces` becomes an empty array
+(In `config-version = 1`, the fallback value of `persistent-workspaces` was inferred from the right hand side of your keyboard bindings. It's proved to be error-prone)
+
+[#after-startup-command]
+=== after-startup-command
+
+You use `after-startup-command` to run arbitrary commands on AeroSpace startup.
+
+Common use cases:
+
+. Run third-party tool on AeroSpace startup (e.g. Sketchybar)
+. Set default layouts for specific workspaces
++
+[source,toml]
+----
+after-startup-command = [
+    'layout --workspace 2 --root v_tiles',
+    'layout --workspace 3 --root h_accordion',
+]
 ----
 
 [#exec-env-vars]
@@ -475,7 +543,7 @@ You can use `on-window-detected` config option to run commands every time a new 
 ----
 on-window-detected = [
     {
-        if = 'test %{app-bundle-id} .= com.apple.systempreferences',
+        if = 'test %{app-bundle-id} = com.apple.systempreferences',
         check-further-callbacks = true,
         run = ['layout floating', 'move-node-to-workspace S'],  # The callback itself
     },
@@ -485,10 +553,13 @@ on-window-detected = [
 `on-window-detected` is an ordered list of callback objects.
 Every object has `if` (optional) and `run` (mandatory) keys inside.
 When a new window is detected:
+
 . AeroSpace processes the list of the callback objects in the defined order.
 . For every callback object, AeroSpace runs the command in the `if`.
 . If the `if` command exits with zero exit code (successful), then AeroSpace runs the command in the `run` and doesn't process any further callback objects.
-. If the `if` command exits with non-zero exit code (fail), then AeroSpace processes the next object in the list.
+. If the `if` command exits with non-zero exit code (fail), then AeroSpace attempts processing the next object in the list.
+
+xref:./commands.adoc#test[test], xref:./commands.adoc#test-not[test-not], xref:./commands.adoc#true[true] and xref:./commands.adoc#false[false] commands are designed to be used inside the `if`.
 
 Additionally, if you want to keep processing the list of callbacks when the `if` is successful, you can use the `check-further-callbacks` option like so:
 
@@ -496,7 +567,7 @@ Additionally, if you want to keep processing the list of callbacks when the `if`
 ----
 on-window-detected = [
     {
-        if = 'test %{app-bundle-id} .= com.apple.systempreferences',
+        if = 'test %{app-bundle-id} = com.apple.systempreferences',
         run = ['layout floating', 'move-node-to-workspace S'],
 
         # The next callbacks will be considered even if this one is successful.
@@ -506,6 +577,7 @@ on-window-detected = [
 ]
 ----
 
+A common use case is to match against app bundle ID in `on-window-detected` callback.
 There are several ways to know `app-bundle-id`:
 
 * Take a look at precompiled xref:./goodies.adoc#popular-apps-ids[list of Apple application IDs]
@@ -523,15 +595,15 @@ Examples of automations:
 ----
 on-window-detected = [
     {
-        if = 'test %{app-bundle-id} .= org.alacritty',
+        if = 'test %{app-bundle-id} = org.alacritty',
         run = 'move-node-to-workspace T', # mnemonics T - Terminal
     },
     {
-        if = 'test %{app-bundle-id} .= com.google.Chrome',
+        if = 'test %{app-bundle-id} = com.google.Chrome',
         run = 'move-node-to-workspace W', # mnemonics W - Web browser
     },
     {
-        if = 'test %{app-bundle-id} .= com.jetbrains.intellij',
+        if = 'test %{app-bundle-id} = com.jetbrains.intellij',
         run = 'move-node-to-workspace I', # mnemonics I - IDE
     }
 ]
@@ -721,7 +793,7 @@ See xref:./commands.adoc#test[the test helper command documentation] for more in
 ----
 on-window-detected = [
     {
-        if = 'test %{app-bundle-id} .= com.apple.systempreferences', # ✅ Do this
+        if = 'test %{app-bundle-id} = com.apple.systempreferences', # ✅ Do this
         run = ['layout floating', 'move-node-to-workspace S'],
     },
 ]

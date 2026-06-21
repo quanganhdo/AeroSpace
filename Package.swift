@@ -23,7 +23,6 @@ let package = Package(
         .library(name: "Common", targets: ["Common"]),
     ],
     dependencies: [
-        .package(path: "./ShellParserGenerated"),
         .package(url: "https://github.com/InerziaSoft/ISSoundAdditions.git", exact: "2.0.1"),
         .package(url: "https://github.com/dduan/TOMLDecoder", exact: "0.4.4"),
         .package(url: "https://github.com/apple/swift-collections.git", exact: "1.3.0"),
@@ -51,7 +50,6 @@ let package = Package(
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "HotKey", package: "HotKey"),
                 .product(name: "ISSoundAdditions", package: "ISSoundAdditions"),
-                .product(name: "ShellParserGenerated", package: "ShellParserGenerated"),
                 .product(name: "TOMLDecoder", package: "TOMLDecoder"),
                 .target(name: "Common"),
                 .target(name: "PrivateApi"),

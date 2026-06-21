@@ -39,15 +39,15 @@ private let adaptiveWeightBeforeResizeWithMouseKey = TreeNodeUserDataKey<CGFloat
 @MainActor
 private func resizeWithMouse(_ window: Window) async throws { // todo cover with tests
     resetClosedWindowsCache()
-    guard let parent = window.parent else { return }
-    switch parent.cases {
-        case .workspace, .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
+    switch window.windowParentCases {
+        case .unbound: return
+        case .floatingWindowsContainer, .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
              .macosPopupWindowsContainer, .macosHiddenAppsWindowsContainer:
             return // Nothing to do for floating, or unconventional windows
-        case .tilingContainer:
+        case .tilingContainer(let tilingParent):
             guard let rect = try await window.getAxRect() else { return }
             guard let lastAppliedLayoutRect = window.lastAppliedLayoutPhysicalRect else { return }
-            guard let parentLayout = (parent as? TilingContainer)?.layout else { return }
+            let parentLayout = tilingParent.layout
             let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: parentLayout) ?? (nil, nil)
             let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: parentLayout) ?? (nil, nil)
             let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: parentLayout) ?? (nil, nil)

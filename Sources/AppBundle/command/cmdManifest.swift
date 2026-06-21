@@ -18,8 +18,12 @@ extension CmdArgs {
                 command = ConfigCommand(args: self as! ConfigCmdArgs)
             case .debugWindows:
                 command = DebugWindowsCommand(args: self as! DebugWindowsCmdArgs)
+            case .echo:
+                command = EchoCommand(args: self as! EchoCmdArgs)
             case .enable:
                 command = EnableCommand(args: self as! EnableCmdArgs)
+            case .eval:
+                command = EvalCommand(args: self as! EvalCmdArgs)
             case .execAndForget:
                 die("exec-and-forget is parsed separately")
             case .flattenWorkspaceTree:
@@ -78,6 +82,8 @@ extension CmdArgs {
                 command = SwapCommand(args: self as! SwapCmdArgs)
             case .test:
                 command = TestCommand(args: self as! TestCmdArgs)
+            case .testNot:
+                command = TestNotCommand(args: self as! TestNotCmdArgs)
             case .triggerBinding:
                 command = TriggerBindingCommand(args: self as! TriggerBindingCmdArgs)
             case .volume:

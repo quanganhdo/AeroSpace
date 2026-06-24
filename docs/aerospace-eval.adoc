@@ -9,7 +9,7 @@ include::util/man-attributes.adoc[]
 == Synopsis
 [verse]
 // tag::synopsis[]
-aerospace eval [-h|--help] [--] <aerospace-shell-expr>
+aerospace eval [-h|--help] [--stdin] [--] <aerospace-shell-expr>
 
 // end::synopsis[]
 
@@ -24,6 +24,10 @@ include::./util/conditional-options-header.adoc[]
 
 -h, --help:: Print help
 
+--stdin::
+Capture CLIs stdin and forward it to `<aerospace-shell-expr>`.
+If not supplied, stdin is ignored.
+
 // =========================================================== Arguments
 include::./util/conditional-arguments-header.adoc[]
 
@@ -33,8 +37,8 @@ See https://nikitabobko.github.io/AeroSpace/guide#shell for more info.
 // =========================================================== Examples
 include::util/conditional-examples-header.adoc[]
 
-* Go to the next non empty workspace on the focused monitor: +
-`aerospace eval 'list-workspaces --monitor focused --empty no | workspace --stdin next'`
+* Cycle between workspaces a, b, and c: +
+`aerospace eval 'echo a b c | workspace --stdin next'`
 
 // end::body[]
 

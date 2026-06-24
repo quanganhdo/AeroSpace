@@ -28,7 +28,7 @@ let enable_help_generated = """
        OR: enable [-h|--help] off [--fail-if-noop]
     """
 let eval_help_generated = """
-    USAGE: eval [-h|--help] [--] <aerospace-shell-expr>
+    USAGE: eval [-h|--help] [--stdin] [--] <aerospace-shell-expr>
     """
 let exec_and_forget_help_generated = """
     USAGE: exec-and-forget <bash-script>
@@ -138,6 +138,10 @@ let reload_config_help_generated = """
     """
 let resize_help_generated = """
     USAGE: resize [-h|--help] [--window-id <window-id>] (smart|smart-opposite|width|height) [+|-]<number>
+    """
+let run_callback_help_generated = """
+    USAGE: run-callback [-h|--help] [--for-every-window|--window-id <window-id>] on-window-detected
+       OR: run-callback [-h|--help] (on-focus-changed|on-focused-monitor-changed)
     """
 let split_help_generated = """
     USAGE: split [-h|--help] [--window-id <window-id>] (horizontal|vertical|opposite)

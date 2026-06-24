@@ -105,7 +105,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
 
         let result = try await parseCommand("layout v_tiles").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.orientation, .v)
         assertEquals(workspace.rootTilingContainer.layout, .tiles)
@@ -116,7 +116,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
 
         let result = try await parseCommand("layout accordion").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.layout, .accordion)
         assertEquals(workspace.rootTilingContainer.orientation, .h)
@@ -127,7 +127,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
 
         let result = try await parseCommand("layout h_tiles").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.layout, .tiles)
         assertEquals(workspace.rootTilingContainer.orientation, .h)
@@ -136,7 +136,7 @@ final class LayoutCommandTest: XCTestCase {
     func testEmptyWorkspace_floating_fails() async throws {
         let workspace = Workspace.get(byName: name)
         let result = try await parseCommand("layout floating").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 2)
         assertEquals(result.stderr, [noWindowIsFocused])
         assertTrue(workspace.isEffectivelyEmpty)
@@ -145,7 +145,7 @@ final class LayoutCommandTest: XCTestCase {
     func testEmptyWorkspace_tiling_fails() async throws {
         let workspace = Workspace.get(byName: name)
         let result = try await parseCommand("layout tiling").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(result.stderr, ["Already in the requested tiling mode. Tip: use --fail-if-noop to exit with non-zero exit code"])
         assertTrue(workspace.isEffectivelyEmpty)
@@ -154,7 +154,7 @@ final class LayoutCommandTest: XCTestCase {
     func testEmptyWorkspace_tiling_failIfNoop() async throws {
         let workspace = Workspace.get(byName: name)
         let result = try await parseCommand("layout tiling --fail-if-noop").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 2)
         assertEquals(result.stderr, [])
         assertTrue(workspace.isEffectivelyEmpty)
@@ -259,7 +259,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
 
         let result = try await parseCommand("layout --root accordion").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.layout, .accordion)
         assertEquals(workspace.rootTilingContainer.orientation, .h)

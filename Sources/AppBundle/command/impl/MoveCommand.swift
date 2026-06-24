@@ -21,12 +21,12 @@ struct MoveCommand: Command {
         switch currentWindow.windowParentCases {
             case .unbound: return .fail
             case .tilingContainer(let parent):
-                let indexOfCurrent = currentWindow.ownIndex.orDie()
+                guard let indexOfCurrent = currentWindow.ownIndex else { return .fail(io.err(bugPrompt())) }
                 let indexOfSiblingTarget = indexOfCurrent + direction.focusOffset
                 if parent.orientation == direction.orientation && parent.children.indices.contains(indexOfSiblingTarget) {
                     switch parent.children[indexOfSiblingTarget].tilingTreeNodeCasesOrDie() {
                         case .tilingContainer(let topLevelSiblingTargetContainer):
-                            return deepMoveIn(window: currentWindow, into: topLevelSiblingTargetContainer, moveDirection: direction)
+                            return deepMoveIn(window: currentWindow, into: topLevelSiblingTargetContainer, moveDirection: direction, io)
                         case .window: // "swap windows"
                             let prevBinding = currentWindow.unbindFromParent()
                             currentWindow.bind(to: parent, adaptiveWeight: prevBinding.adaptiveWeight, index: indexOfSiblingTarget)
@@ -121,7 +121,7 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
         case .unbound: return .fail
         case .tilingContainer(let parent):
             check(parent.orientation == direction.orientation)
-            guard let ownIndex = innerMostTilingContainer.ownIndex else { return .fail }
+            guard let ownIndex = innerMostTilingContainer.ownIndex else { return .fail(io.err(bugPrompt())) }
             if parent.layout == .dwindle {
                 let otherWindow = parent.children.first(where: { $0 is Window })
                 let indexOfWindow = innerMostTilingContainer.children.firstIndex(of: window) ?? 0
@@ -150,15 +150,15 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
     window.bind(to: workspace.rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: direction.insertionOffset)
 }
 
-@MainActor private func deepMoveIn(window: Window, into container: TilingContainer, moveDirection: CardinalDirection) -> BinaryExitCode {
+@MainActor private func deepMoveIn(window: Window, into container: TilingContainer, moveDirection: CardinalDirection, _ io: CmdIo) -> BinaryExitCode {
     let deepTarget = container.tilingTreeNodeCasesOrDie().findDeepMoveInTargetRecursive(moveDirection.orientation)
     switch deepTarget {
         case .tilingContainer(let deepTarget):
             window.bind(to: deepTarget, adaptiveWeight: WEIGHT_AUTO, index: 0)
         case .window(let deepTarget):
-            guard let parent = deepTarget.parent as? TilingContainer else { return .fail }
+            guard let parent = deepTarget.parent as? TilingContainer else { return .fail(io.err(bugPrompt())) }
+            guard let deepTargetIndex = deepTarget.ownIndex else { return .fail(io.err(bugPrompt())) }
             if parent.layout == .dwindle {
-                let deepTargetIndex = deepTarget.ownIndex.orDie()
                 let windowsIndex = window.ownIndex.orDie()
                 let windowParent = window.parent.orDie()
                 window.bind(to: parent, adaptiveWeight: WEIGHT_AUTO, index: deepTargetIndex)
@@ -168,7 +168,7 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
             window.bind(
                 to: parent,
                 adaptiveWeight: WEIGHT_AUTO,
-                index: deepTarget.ownIndex.orDie() + 1,
+                index: deepTargetIndex + 1,
             )
     }
     return .succ

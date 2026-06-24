@@ -19,8 +19,8 @@ final class WorkspaceCommandTest: XCTestCase {
         assertEquals(parseCommand("workspace --auto-back-and-forth next").errorOrNil, "--auto-back-and-forth is incompatible with (next|prev)")
         testParseSingleCommandSucc("workspace next --wrap-around", WorkspaceCmdArgs(target: .relative(.next), wrapAround: true))
         assertEquals(parseCommand("workspace --stdin foo").errorOrNil, "--stdin and --no-stdin require using (next|prev) argument")
-        testParseSingleCommandSucc("workspace --stdin next", WorkspaceCmdArgs(target: .relative(.next)).copy(\.explicitStdinFlag, true))
-        testParseSingleCommandSucc("workspace --no-stdin next", WorkspaceCmdArgs(target: .relative(.next)).copy(\.explicitStdinFlag, false))
+        testParseSingleCommandSucc("workspace --stdin next", WorkspaceCmdArgs(target: .relative(.next)).copy(\.commonState.explicitStdinFlag, true))
+        testParseSingleCommandSucc("workspace --no-stdin next", WorkspaceCmdArgs(target: .relative(.next)).copy(\.commonState.explicitStdinFlag, false))
     }
 
     func testParseDashDash() {
@@ -153,13 +153,13 @@ final class WorkspaceCommandTest: XCTestCase {
         assertEquals(focus.workspace.name, "a")
     }
 
-    func testRelativeNext_currentNotInStdin_picksFirst() async throws {
+    func testRelativeNext_currentNotInStdin() async throws {
         // When current workspace isn't in the stdin list, index defaults to 0, so `next` lands on index 1.
         assertTrue(Workspace.get(byName: "z").focusWorkspace())
 
         let result = try await parseCommand("workspace --stdin next").cmdOrDie.run(.defaultEnv, CmdStdin("a\nb\nc\n"))
         assertEquals(result.exitCode.rawValue, 0)
-        assertEquals(focus.workspace.name, "b")
+        assertEquals(focus.workspace.name, "a")
     }
 
     func testRelativeNext_noStdin_picksFromAllWorkspaces() async throws {

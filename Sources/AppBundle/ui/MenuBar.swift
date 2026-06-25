@@ -112,8 +112,8 @@ private func workspaceLayoutButton(
     }
 }
 
-private extension Layout {
-    func matches(_ description: LayoutCmdArgs.LayoutDescription) -> Bool {
+extension Layout {
+    fileprivate func matches(_ description: LayoutCmdArgs.LayoutDescription) -> Bool {
         return switch description {
             case .accordion: self == .accordion
             case .tiles: self == .tiles

@@ -270,7 +270,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
 
         let result = try await parseCommand("layout --root dwindle").cmdOrDie
-            .run(.defaultEnv.copy(\.workspaceName, name), .emptyStdin)
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.layout, .dwindle)
         assertEquals(workspace.rootTilingContainer.orientation, .h)

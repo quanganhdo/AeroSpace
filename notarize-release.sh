@@ -36,7 +36,7 @@ mise exec -- ./build-shell-completion.sh
 
 build_dir=".notarization-build"
 app_path="$build_dir/Build/Products/Release/AeroSpace.app"
-cli_path="$build_dir/Build/Products/Release/aerospace"
+cli_path=".build/apple/Products/Release/aerospace"
 release_dir=".release/AeroSpace-v$build_version"
 release_zip=".release/AeroSpace-v$build_version.zip"
 submission_zip=".release/AeroSpace-v$build_version-notarization.zip"
@@ -49,20 +49,14 @@ trap restore_development_generated_files EXIT
 rm -rf "$build_dir" "$release_dir" "$release_zip" "$submission_zip"
 
 flowdeck build \
-    -w "$PWD/AeroSpace.xcodeproj" \
+    -w "$PWD/xcode/AeroSpace.xcodeproj" \
     -s AeroSpace \
-    -S none \
+    -D "My Mac" \
     -C Release \
     -d "$build_dir" \
     --xcodebuild-options='ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO OTHER_CODE_SIGN_FLAGS=--timestamp'
 
-flowdeck build \
-    -w "$PWD/AeroSpace.xcodeproj" \
-    -s AeroSpaceCli \
-    -S none \
-    -C Release \
-    -d "$build_dir" \
-    --xcodebuild-options='ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO'
+swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors
 
 codesign --verify --deep --strict --verbose=2 "$app_path"
 file "$app_path/Contents/MacOS/AeroSpace" | grep --fixed-string "Mach-O universal binary with 2 architectures"

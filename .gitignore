@@ -15,6 +15,7 @@
 /.build
 /.swiftpm
 /.vscode
+/.codegraph
 # External dependencies
 /.deps
 

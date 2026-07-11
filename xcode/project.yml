@@ -5,36 +5,21 @@ name: AeroSpace
 
 packages:
   AeroSpacePackage:
-    path: .
+    path: aerospace-package-symlink
 
 configs:
   Debug: debug
   Release: release
 
 targets:
-  AeroSpaceCli:
-    type: tool
-    platform: macOS
-    deploymentTarget: "13.0"
-    sources:
-      - "Sources/Cli"
-    dependencies:
-      - package: AeroSpacePackage
-        product: Common
-    settings:
-      base:
-        PRODUCT_NAME: aerospace
-        SWIFT_VERSION: 6.2
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-
   AeroSpace:
     type: application
     platform: macOS
     deploymentTarget: "13.0"
     sources:
-      - "Sources/AeroSpaceApp"
-      - "resources"
-      - "docs/config-examples/default-config.toml"
+      - "../Sources/AeroSpaceApp"
+      - "../resources"
+      - "../docs/config-examples/default-config.toml"
     dependencies:
       - package: AeroSpacePackage
         product: AppBundle
@@ -61,7 +46,7 @@ targets:
           SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
           GCC_TREAT_WARNINGS_AS_ERRORS: YES
     entitlements:
-      path: resources/AeroSpace.entitlements
+      path: ../resources/AeroSpace.entitlements
       properties:
         # Accessibility API doesn't work in sandboxed apps
         com.apple.security.app-sandbox: false

@@ -10,6 +10,7 @@
 .DS_Store
 /.xcode-build
 /.notarization-build
+/xcode/.xcode-build
 # Swift package manager
 /.build
 /.swiftpm

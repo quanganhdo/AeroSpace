@@ -116,7 +116,7 @@ private func workspaceLayoutButton(
                 var args = LayoutCmdArgs(rawArgs: [], toggleBetween: [layout])
                 args.root = true
                 let command: any Command = LayoutCommand(args: args)
-                _ = try await Shell<any Command>.cmd(command).run(.defaultEnv.withWorkspaceName(workspace.name), .emptyStdin)
+                _ = await Shell<any Command>.cmd(command).run(.defaultEnv.withWorkspaceName(workspace.name), .emptyStdin)
             }
         }
     } label: {

@@ -21,6 +21,10 @@ final class LayoutCommandTest: XCTestCase {
             "layout --root accordion tiles",
             LayoutCmdArgs(rawArgs: [], toggleBetween: [.accordion, .tiles]).copy(\.root, true),
         )
+        testParseSingleCommandSucc(
+            "layout --root dwindle",
+            LayoutCmdArgs(rawArgs: [], toggleBetween: [.dwindle]).copy(\.root, true),
+        )
         testParseCommandFail(
             "layout --workspace 2 tiles",
             msg: "--workspace flag requires using an explicit --root flag",
@@ -258,6 +262,17 @@ final class LayoutCommandTest: XCTestCase {
             .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(workspace.rootTilingContainer.layout, .accordion)
+        assertEquals(workspace.rootTilingContainer.orientation, .h)
+    }
+
+    func testRoot_emptyWorkspace_changeLayoutToDwindle() async {
+        let workspace = Workspace.get(byName: name)
+        assertTrue(workspace.isEffectivelyEmpty)
+
+        let result = await parseCommand("layout --root dwindle").cmdOrDie
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(workspace.rootTilingContainer.layout, .dwindle)
         assertEquals(workspace.rootTilingContainer.orientation, .h)
     }
 

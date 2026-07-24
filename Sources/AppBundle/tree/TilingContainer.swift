@@ -55,7 +55,7 @@ extension TilingContainer {
     }
 }
 
-enum Layout: String {
+enum Layout: String, Hashable {
     case tiles
     case accordion
     case dwindle

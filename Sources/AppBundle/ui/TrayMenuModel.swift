@@ -50,6 +50,7 @@ enum AxPermissionStatus: Equatable {
             isEffectivelyEmpty: $0.isEffectivelyEmpty,
             isVisible: $0.isVisible,
             hasFullscreenWindows: hasFullscreenWindows,
+            rootLayout: $0.rootTilingContainer.layout,
         )
     }
     var items = sortedMonitors.map {
@@ -77,6 +78,7 @@ struct WorkspaceViewModel: Hashable {
     let isEffectivelyEmpty: Bool
     let isVisible: Bool
     let hasFullscreenWindows: Bool
+    let rootLayout: Layout
 }
 
 enum TrayItemType: String, Hashable {

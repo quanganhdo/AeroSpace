@@ -29,15 +29,7 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
             if let token: RunSessionGuard = .isServerEnabled {
                 Text("Workspaces:")
                 ForEach(viewModel.workspaces, id: \.name) { workspace in
-                    Button {
-                        Task.startUnstructured {
-                            try await runLightSession(.menuBarButton, token) { _ = Workspace.get(byName: workspace.name).focusWorkspace() }
-                        }
-                    } label: {
-                        Toggle(isOn: .constant(workspace.isFocused)) {
-                            Text(workspace.name + workspace.suffix).font(.system(.body, design: .monospaced))
-                        }
-                    }
+                    workspaceMenu(workspace, token)
                 }
                 Divider()
             }
@@ -83,6 +75,62 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
                 Image(systemName: "exclamationmark.triangle.fill")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+        }
+    }
+}
+
+@MainActor @ViewBuilder
+private func workspaceMenu(_ workspace: WorkspaceViewModel, _ token: RunSessionGuard) -> some View {
+    Menu {
+        Button {
+            Task.startUnstructured {
+                try await runLightSession(.menuBarButton, token) { _ = Workspace.get(byName: workspace.name).focusWorkspace() }
+            }
+        } label: {
+            Toggle(isOn: .constant(workspace.isFocused)) {
+                Text("Focus")
+            }
+        }
+        Divider()
+        Text("Root Layout")
+        workspaceLayoutButton(workspace, layout: .tiles, title: "Tiles", token)
+        workspaceLayoutButton(workspace, layout: .accordion, title: "Accordion", token)
+        workspaceLayoutButton(workspace, layout: .dwindle, title: "Dwindle", token)
+    } label: {
+        Text(workspace.name + workspace.suffix).font(.system(.body, design: .monospaced))
+    }
+}
+
+@MainActor
+private func workspaceLayoutButton(
+    _ workspace: WorkspaceViewModel,
+    layout: LayoutCmdArgs.LayoutDescription,
+    title: String,
+    _ token: RunSessionGuard,
+) -> some View {
+    Button {
+        Task.startUnstructured {
+            try await runLightSession(.menuBarButton, token) {
+                var args = LayoutCmdArgs(rawArgs: [], toggleBetween: [layout])
+                args.root = true
+                let command: any Command = LayoutCommand(args: args)
+                _ = try await Shell<any Command>.cmd(command).run(.defaultEnv.withWorkspaceName(workspace.name), .emptyStdin)
+            }
+        }
+    } label: {
+        Toggle(isOn: .constant(workspace.rootLayout.matches(layout))) {
+            Text(title)
+        }
+    }
+}
+
+extension Layout {
+    fileprivate func matches(_ description: LayoutCmdArgs.LayoutDescription) -> Bool {
+        return switch description {
+            case .accordion: self == .accordion
+            case .tiles: self == .tiles
+            case .dwindle: self == .dwindle
+            case .horizontal, .vertical, .h_accordion, .v_accordion, .h_tiles, .v_tiles, .tiling, .floating: false
         }
     }
 }

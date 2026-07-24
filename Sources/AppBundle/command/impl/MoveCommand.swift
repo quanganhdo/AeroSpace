@@ -127,7 +127,10 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
             check(parent.orientation == direction.orientation)
             guard let ownIndex = innerMostTilingContainer.ownIndex else { return .fail(io.err(bugPrompt())) }
             if parent.layout == .dwindle {
-                guard let otherWindow = parent.children.first(where: { $0 is Window }) as? Window else {
+                let targetIndex = ownIndex + direction.focusOffset
+                guard parent.children.indices.contains(targetIndex),
+                      let otherWindow = parent.children[targetIndex].findLeafWindowRecursive(snappedTo: direction.opposite)
+                else {
                     return .fail(io.err(bugPrompt()))
                 }
                 swapWindows(mruDominant: window, otherWindow)

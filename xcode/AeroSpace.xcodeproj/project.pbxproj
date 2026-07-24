@@ -297,8 +297,8 @@
 				CODE_SIGN_ENTITLEMENTS = ../resources/AeroSpace.entitlements;
 				CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
 				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = "AeroSpace-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -391,10 +391,10 @@
 				CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_FILE = "AeroSpace-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

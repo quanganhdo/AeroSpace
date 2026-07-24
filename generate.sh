@@ -3,6 +3,8 @@ cd "$(dirname "$0")"
 source ./script/setup.sh
 
 export XCODEGEN_AEROSPACE_CODE_SIGN_IDENTITY="aerospace-codesign-certificate"
+export XCODEGEN_AEROSPACE_BUILD_NUMBER="1"
+export XCODEGEN_SPARKLE_PUBLIC_ED_KEY=""
 build_version="0.0.0-SNAPSHOT"
 generate_xcodeproj=1
 generate_cmd_help=1
@@ -10,13 +12,20 @@ generate_git_hash=0
 while test $# -gt 0; do
     case $1 in
         --build-version) build_version="$2"; shift 2 ;;
+        --build-number) XCODEGEN_AEROSPACE_BUILD_NUMBER="$2"; shift 2 ;;
         --codesign-identity) XCODEGEN_AEROSPACE_CODE_SIGN_IDENTITY="$2"; shift 2 ;;
+        --sparkle-public-key) XCODEGEN_SPARKLE_PUBLIC_ED_KEY="$2"; shift 2 ;;
         --generate-git-hash) generate_git_hash=1; shift 1;;
         --ignore-cmd-help) generate_cmd_help=0; shift 1 ;;
         --ignore-xcodeproj) generate_xcodeproj=0; shift 1 ;;
         *) echo "Unknown option $1"; exit 1 ;;
     esac
 done
+
+if test -z "$XCODEGEN_SPARKLE_PUBLIC_ED_KEY" && test -f script/sparkle-public-key.txt; then
+    XCODEGEN_SPARKLE_PUBLIC_ED_KEY="$(tr -d '\n' < script/sparkle-public-key.txt)"
+    export XCODEGEN_SPARKLE_PUBLIC_ED_KEY
+fi
 
 if test $generate_cmd_help = 1; then
     # It takes 300ms for the script to complete

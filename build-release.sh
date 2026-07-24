@@ -81,6 +81,10 @@ if test "$timestamp_signatures" = 1; then
 fi
 codesign "${codesign_args[@]}" .release/aerospace
 ./script/embed-release-support-files.sh .release/AeroSpace.app .release/aerospace
+./script/sign-sparkle-for-distribution.sh \
+    .release/AeroSpace.app \
+    "$codesign_identity" \
+    "$timestamp_signatures"
 codesign "${codesign_args[@]}" .release/AeroSpace.app
 
 ################

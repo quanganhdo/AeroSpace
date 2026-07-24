@@ -72,6 +72,7 @@ flowdeck build \
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors
 
 ./script/embed-release-support-files.sh "$app_path" "$cli_path"
+./script/sign-sparkle-for-distribution.sh "$app_path" "$codesign_identity"
 codesign --force --options runtime --timestamp --sign "$codesign_identity" "$app_path/Contents/Helpers/aerospace"
 codesign --force --options runtime --timestamp --sign "$codesign_identity" "$app_path"
 

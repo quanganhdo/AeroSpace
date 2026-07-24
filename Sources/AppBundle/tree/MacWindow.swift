@@ -268,16 +268,16 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
                     )
                 }
 
-                if parentContainer.children.count == 2, let indexOfMru = parentContainer.children.firstIndex(of: mru) {
-
-                    mru.unbindFromParent()
+                if parentContainer.children.count == 2 {
+                    let hasAppliedLayout = mru.lastAppliedLayoutVirtualRect != nil
+                    let previousBinding = mru.unbindFromParent()
 
                     let newContainer = TilingContainer(
                         parent: parentContainer,
-                        adaptiveWeight: WEIGHT_AUTO,
+                        adaptiveWeight: hasAppliedLayout ? previousBinding.adaptiveWeight : WEIGHT_AUTO,
                         parentContainer.orientation.opposite,
                         parentContainer.layout,
-                        index: indexOfMru == 0 ? 0 : INDEX_BIND_LAST,
+                        index: previousBinding.index,
                     )
 
                     mru.bind(

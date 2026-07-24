@@ -55,6 +55,47 @@ final class DwindleInsertionTest: XCTestCase {
         assertRectEquals(rootUnaffectedWindow.lastAppliedLayoutVirtualRect, rootUnaffectedRectBeforeInsertion)
     }
 
+    func testInsertionSplitsNearestDwindleSlotAboveNonDwindleBranch() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+
+        let nestedDwindle = TilingContainer(
+            parent: root,
+            adaptiveWeight: 70,
+            .v,
+            .dwindle,
+            index: INDEX_BIND_LAST,
+        )
+        let tilesBranch = TilingContainer(
+            parent: nestedDwindle,
+            adaptiveWeight: 60,
+            .h,
+            .tiles,
+            index: INDEX_BIND_LAST,
+        )
+        let splitWindow = TestWindow.new(id: 1, parent: tilesBranch, adaptiveWeight: 70)
+        TestWindow.new(id: 2, parent: tilesBranch, adaptiveWeight: 30)
+        let nestedUnaffectedWindow = TestWindow.new(id: 3, parent: nestedDwindle, adaptiveWeight: 40)
+        let rootUnaffectedWindow = TestWindow.new(id: 4, parent: root, adaptiveWeight: 30)
+
+        try await workspace.layoutWorkspace()
+        let nestedUnaffectedRectBeforeInsertion = nestedUnaffectedWindow.lastAppliedLayoutVirtualRect
+        let rootUnaffectedRectBeforeInsertion = rootUnaffectedWindow.lastAppliedLayoutVirtualRect
+        splitWindow.markAsMostRecentChild()
+
+        let newWindow = insertNewDwindleWindow(id: 5, in: workspace)
+        try await workspace.layoutWorkspace()
+
+        let splitContainer = tilesBranch.parent as? TilingContainer
+        assertEquals(splitContainer?.layout, .dwindle)
+        assertEquals(splitContainer?.parent, nestedDwindle)
+        assertEquals(newWindow.parent, splitContainer)
+        assertEquals(tilesBranch.layout, .tiles)
+        assertRectEquals(nestedUnaffectedWindow.lastAppliedLayoutVirtualRect, nestedUnaffectedRectBeforeInsertion)
+        assertRectEquals(rootUnaffectedWindow.lastAppliedLayoutVirtualRect, rootUnaffectedRectBeforeInsertion)
+    }
+
     func testInsertionBeforeInitialLayoutUsesBalancedProvisionalWeights() async throws {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer

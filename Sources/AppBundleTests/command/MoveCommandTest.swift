@@ -229,6 +229,41 @@ final class MoveCommandTest: XCTestCase {
         assertEquals(result.exitCode.rawValue, 0)
     }
 
+    func testDwindleCreateImplicitContainerPreservesDwindleRootForNextInsertion() async {
+        let workspace = Workspace.get(byName: name)
+        workspace.rootTilingContainer.apply {
+            $0.layout = .dwindle
+            TestWindow.new(id: 1, parent: $0)
+            assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+            TestWindow.new(id: 3, parent: $0)
+        }
+
+        let result = await parseCommand("move up").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(
+            workspace.layoutDescription,
+            .workspace([
+                .dwindle([
+                    .window(2),
+                    .dwindle([.window(1), .window(3)]),
+                ]),
+            ]),
+        )
+
+        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace, window: nil)
+        TestWindow.new(id: 4, parent: binding.parent, adaptiveWeight: binding.adaptiveWeight)
+
+        assertEquals(
+            workspace.layoutDescription,
+            .workspace([
+                .dwindle([
+                    .dwindle([.window(2), .window(4)]),
+                    .dwindle([.window(1), .window(3)]),
+                ]),
+            ]),
+        )
+    }
+
     func testStop_onRootNode() async {
         let workspace = Workspace.get(byName: name)
         workspace.rootTilingContainer.apply {

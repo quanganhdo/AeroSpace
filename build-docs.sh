@@ -32,7 +32,7 @@ build-site() {
     cd .site
         # Delete "aerospace " prefifx in synopsis
         sed -E -i '' '/tag::synopsis/, /end::synopsis/ s/^(aerospace | {10})//' aerospace*
-        bundler exec asciidoctor \
+        mise exec -- bundler exec asciidoctor \
             "${adoc_site_args[@]}" \
             ./guide.adoc \
             ./commands.adoc \
@@ -50,7 +50,7 @@ build-site() {
 build-man() {
     cp-docs .man
     cd .man
-        bundler exec asciidoctor -b manpage aerospace*.adoc
+        mise exec -- bundler exec asciidoctor -b manpage aerospace*.adoc
 
         # Comment by AI:
         #   gman (the g Dai client) renders bare .~ and /~ as ligatures (~ becomes ˜).

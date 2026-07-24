@@ -48,7 +48,7 @@ mise exec -- ./build-shell-completion.sh
 
 build_dir=".notarization-build"
 app_path="$build_dir/Build/Products/Release/AeroSpace.app"
-cli_path=".build/apple/Products/Release/aerospace"
+cli_path=".build/release/aerospace"
 release_dir=".release/AeroSpace-v$build_version"
 release_zip=".release/AeroSpace-v$build_version.zip"
 sparkle_zip=".release/AeroSpace-v$build_version-sparkle.zip"

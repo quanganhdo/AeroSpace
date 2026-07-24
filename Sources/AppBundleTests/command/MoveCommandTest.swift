@@ -127,6 +127,68 @@ final class MoveCommandTest: XCTestCase {
         assertEquals(window1.hWeight, 1)
     }
 
+    func testDwindleSwapPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let window1 = TestWindow.new(id: 1, parent: root, adaptiveWeight: 70)
+        let window2 = TestWindow.new(id: 2, parent: root, adaptiveWeight: 30)
+        try await workspace.layoutWorkspace()
+        let slot1 = try XCTUnwrap(window1.lastAppliedLayoutVirtualRect)
+        let slot2 = try XCTUnwrap(window2.lastAppliedLayoutVirtualRect)
+        _ = window1.focusWindow()
+
+        await parseCommand("move right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(window1.lastAppliedLayoutVirtualRect, slot2)
+        assertMoveRectEquals(window2.lastAppliedLayoutVirtualRect, slot1)
+    }
+
+    func testDwindleMoveInPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let movingWindow = TestWindow.new(id: 1, parent: root, adaptiveWeight: 30)
+        let nested = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let unaffectedWindow = TestWindow.new(id: 2, parent: nested, adaptiveWeight: 60)
+        let targetWindow = TestWindow.new(id: 3, parent: nested, adaptiveWeight: 40)
+        try await workspace.layoutWorkspace()
+        let movingSlot = try XCTUnwrap(movingWindow.lastAppliedLayoutVirtualRect)
+        let unaffectedSlot = try XCTUnwrap(unaffectedWindow.lastAppliedLayoutVirtualRect)
+        let targetSlot = try XCTUnwrap(targetWindow.lastAppliedLayoutVirtualRect)
+        _ = movingWindow.focusWindow()
+
+        await parseCommand("move right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(movingWindow.lastAppliedLayoutVirtualRect, targetSlot)
+        assertMoveRectEquals(targetWindow.lastAppliedLayoutVirtualRect, movingSlot)
+        assertMoveRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedSlot)
+    }
+
+    func testDwindleMoveOutPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let outerWindow = TestWindow.new(id: 1, parent: root, adaptiveWeight: 30)
+        let nested = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let movingWindow = TestWindow.new(id: 2, parent: nested, adaptiveWeight: 60)
+        let unaffectedWindow = TestWindow.new(id: 3, parent: nested, adaptiveWeight: 40)
+        try await workspace.layoutWorkspace()
+        let outerSlot = try XCTUnwrap(outerWindow.lastAppliedLayoutVirtualRect)
+        let movingSlot = try XCTUnwrap(movingWindow.lastAppliedLayoutVirtualRect)
+        let unaffectedSlot = try XCTUnwrap(unaffectedWindow.lastAppliedLayoutVirtualRect)
+        _ = movingWindow.focusWindow()
+
+        await parseCommand("move left").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(movingWindow.lastAppliedLayoutVirtualRect, outerSlot)
+        assertMoveRectEquals(outerWindow.lastAppliedLayoutVirtualRect, movingSlot)
+        assertMoveRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedSlot)
+    }
+
     func testMoveIn_newWeight() async {
         var window1: Window!
         var window2: Window!
@@ -362,4 +424,20 @@ enum LayoutDescription: Equatable {
     case macosMinimized
     case macosHiddeAppWindow
     case macosFullscreen
+}
+
+private func assertMoveRectEquals(
+    _ actual: Rect?,
+    _ expected: Rect,
+    file: StaticString = #filePath,
+    line: UInt = #line,
+) {
+    guard let actual else {
+        XCTFail("Expected an applied layout rectangle", file: file, line: line)
+        return
+    }
+    assertEquals(actual.topLeftX, expected.topLeftX, additionalMsg: "topLeftX", file: file, line: line)
+    assertEquals(actual.topLeftY, expected.topLeftY, additionalMsg: "topLeftY", file: file, line: line)
+    assertEquals(actual.width, expected.width, additionalMsg: "width", file: file, line: line)
+    assertEquals(actual.height, expected.height, additionalMsg: "height", file: file, line: line)
 }

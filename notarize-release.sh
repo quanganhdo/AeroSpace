@@ -80,7 +80,8 @@ file "$app_path/Contents/MacOS/AeroSpace" | grep --fixed-string "Mach-O universa
 file "$app_path/Contents/Helpers/aerospace" | grep --fixed-string "Mach-O universal binary with 2 architectures"
 
 mkdir -p "$release_dir/bin" "$release_dir/manpage"
-cp -r "$app_path" "$release_dir"
+/usr/bin/ditto "$app_path" "$release_dir/AeroSpace.app"
+codesign --verify --deep --strict --verbose=2 "$release_dir/AeroSpace.app"
 cp "$app_path/Contents/Helpers/aerospace" "$release_dir/bin/aerospace"
 codesign --force --options runtime --timestamp --sign "$codesign_identity" "$release_dir/bin/aerospace"
 codesign --verify --strict --verbose=2 "$release_dir/bin/aerospace"

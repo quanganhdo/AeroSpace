@@ -66,7 +66,9 @@ cd -
 
 git checkout .
 
-cp -r "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
+/usr/bin/ditto \
+    "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" \
+    .release/AeroSpace.app
 cp .build/release/aerospace .release
 
 ################
@@ -137,7 +139,8 @@ cp LICENSE.txt ".release/AeroSpace-v$build_version/legal/LICENSE.txt"
 cp -r .shell-completion ".release/AeroSpace-v$build_version/shell-completion"
 cd .release
     mkdir -p "AeroSpace-v$build_version/bin" && cp -r aerospace "AeroSpace-v$build_version/bin"
-    cp -r AeroSpace.app "AeroSpace-v$build_version"
+    /usr/bin/ditto AeroSpace.app "AeroSpace-v$build_version/AeroSpace.app"
+    codesign --verify --deep --strict --verbose=2 "AeroSpace-v$build_version/AeroSpace.app"
     /usr/bin/ditto --norsrc -c -k --keepParent \
         "AeroSpace-v$build_version" \
         "AeroSpace-v$build_version.zip"

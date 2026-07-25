@@ -19,11 +19,13 @@ content.sub!(/^  version .+$/, %(  version "#{version}"))
 content.sub!(/^  sha256 .+$/, %(  sha256 "#{sha}"))
 
 unless content.match?(/^  auto_updates true$/)
-  unless content.scan(/^  homepage .+$/).length == 1
-    abort "Expected exactly one homepage stanza in #{path}"
+  unless content.scan(/^  conflicts_with .+$/).length == 1
+    abort "Expected exactly one conflicts_with stanza in #{path}"
   end
-  content.sub!(/^  homepage .+$/, "\\0\n  auto_updates true")
+  content.sub!(/^  conflicts_with .+$/, "  auto_updates true\n\\0")
 end
+content.sub!(/^  homepage (.+)\n  auto_updates true\n\n  conflicts_with /,
+             "  homepage \\1\n\n  auto_updates true\n  conflicts_with ")
 
 artifact_migrations = {
   '"AeroSpace-v#{version}/bin/aerospace"' =>

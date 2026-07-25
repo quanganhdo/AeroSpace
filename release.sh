@@ -122,7 +122,11 @@ if test -n "$(git -C "$tap_dir" status --porcelain)"; then
     exit 1
 fi
 
-gh auth status > /dev/null
+authenticated_user="$(gh api user --jq .login)"
+if test "$authenticated_user" != "${github_repo%%/*}"; then
+    echo "GitHub token belongs to $authenticated_user, expected ${github_repo%%/*}" > /dev/stderr
+    exit 1
+fi
 git fetch origin main
 git -C "$tap_dir" fetch origin main
 

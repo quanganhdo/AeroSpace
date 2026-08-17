@@ -5,7 +5,7 @@ struct LayoutCommand: Command {
     let args: LayoutCmdArgs
     /*conforms*/ let shouldResetClosedWindowsCache = true
 
-    func run(_ env: CmdEnv, _ io: CmdIo) async throws -> BinaryExitCode {
+    func run(_ env: CmdEnv, _ io: CmdIo) async -> BinaryExitCode {
         guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
 
         let node: ConventionalWindowParentCases
@@ -59,7 +59,11 @@ struct LayoutCommand: Command {
             case .dwindle:
                 if changeTilingLayout(io, targetLayout: .dwindle, targetOrientation: nil, node: node) == .succ {
                     if let window = target.windowOrNil {
-                        try await relayoutAllWindows(window: window)
+                        do {
+                            try await relayoutAllWindows(window: window)
+                        } catch {
+                            return .fail(io.err(bugPrompt()))
+                        }
                     }
                     return .succ
                 }
@@ -74,9 +78,13 @@ struct LayoutCommand: Command {
                     case .tilingContainer:
                         return .succ // Nothing to do
                     case .floatingWindowsContainer(let container):
-                        window.lastFloatingSize = try await window.getAxSize() ?? window.lastFloatingSize
+                        window.lastFloatingSize = (try? await window.getAxSize(.nonCancellable)) ?? window.lastFloatingSize
                         guard let workspace = container.nodeWorkspace else { return .fail(io.err(bugPrompt())) }
-                        try await window.relayoutWindow(on: workspace, forceTile: true)
+                        do {
+                            try await window.relayoutWindow(on: workspace, .nonCancellable, forceTile: true)
+                        } catch {
+                            return .fail(io.err(bugPrompt()))
+                        }
                         return .succ
                 }
             case .floating:
@@ -139,7 +147,7 @@ extension LayoutCommand {
         let allWindows = workspace.allLeafWindowsRecursive
         allWindows.forEach { $0.unbindFromParent() }
         for element in allWindows {
-            try await element.relayoutWindow(on: workspace, forceTile: false)
+            try await element.relayoutWindow(on: workspace, .nonCancellable, forceTile: false)
         }
     }
 }

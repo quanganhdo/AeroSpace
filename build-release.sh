@@ -38,22 +38,24 @@ swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -
 
 rm -rf .release && mkdir .release
 
-xcode_configuration="Release"
-xcodebuild -version
-extra_xcodebuild_args=()
-if test "$timestamp_signatures" = 1; then
-    extra_xcodebuild_args+=("OTHER_CODE_SIGN_FLAGS=--timestamp")
-fi
-xcodebuild-pretty .release/xcodebuild.log clean build \
-    -scheme AeroSpace \
-    -destination "generic/platform=macOS" \
-    -configuration "$xcode_configuration" \
-    -derivedDataPath .xcode-build \
-    ${extra_xcodebuild_args[@]+"${extra_xcodebuild_args[@]}"}
+cd ./xcode
+    xcode_configuration="Release"
+    xcodebuild -version
+    extra_xcodebuild_args=()
+    if test "$timestamp_signatures" = 1; then
+        extra_xcodebuild_args+=("OTHER_CODE_SIGN_FLAGS=--timestamp")
+    fi
+    xcodebuild-pretty ../.release/xcodebuild.log clean build \
+        -scheme AeroSpace \
+        -destination "generic/platform=macOS" \
+        -configuration "$xcode_configuration" \
+        -derivedDataPath .xcode-build \
+        ${extra_xcodebuild_args[@]+"${extra_xcodebuild_args[@]}"}
+cd -
 
 git checkout .
 
-cp -r ".xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
+cp -r "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
 cp -r .build/apple/Products/Release/aerospace .release
 
 ################

@@ -276,7 +276,7 @@ final class MoveCommandTest: XCTestCase {
             ]),
         )
 
-        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace, window: nil)
+        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace)
         TestWindow.new(id: 4, parent: binding.parent, adaptiveWeight: binding.adaptiveWeight)
 
         assertEquals(

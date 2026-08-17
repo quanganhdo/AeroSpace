@@ -20,8 +20,10 @@ if sw_vers -productVersion | grep -q "^14"; then # macOS 14
 else
     ./script/install-dep.sh --periphery
     # Disable superfluous comments detection because it's buggy. todo: report to periphery maintainer
+    # Periphery 3.7.2 expects SwiftPM's legacy .build/debug/index/store layout.
     ./.deps/periphery/periphery scan --quiet \
         --strict \
         --disable-redundant-public-analysis \
-        --no-superfluous-ignore-comments
+        --no-superfluous-ignore-comments \
+        -- --build-system native
 fi

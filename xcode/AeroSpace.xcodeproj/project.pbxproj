@@ -188,8 +188,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				1EA38266F360C6A01A4FB8FB /* AeroSpaceCli */,
 				B00BE37A79171B0EE995EB83 /* AeroSpace */,
+				1EA38266F360C6A01A4FB8FB /* AeroSpaceCli */,
 			);
 		};
 /* End PBXProject section */

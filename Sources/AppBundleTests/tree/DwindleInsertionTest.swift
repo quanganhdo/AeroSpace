@@ -113,7 +113,7 @@ final class DwindleInsertionTest: XCTestCase {
     }
 
     private func insertNewDwindleWindow(id: UInt32, in workspace: Workspace) -> TestWindow {
-        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace, window: nil)
+        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace)
         return TestWindow.new(
             id: id,
             parent: binding.parent,

@@ -8,13 +8,13 @@
 # IDK, AppCode randomly creates this EMPTY file. I have no idea what this is
 /default.profraw
 .DS_Store
-/.xcode-build
-/.notarization-build
 /xcode/.xcode-build
+/.notarization-build
 # Swift package manager
 /.build
 /.swiftpm
 /.vscode
+/.codegraph
 # External dependencies
 /.deps
 

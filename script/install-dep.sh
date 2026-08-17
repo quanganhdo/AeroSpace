@@ -33,7 +33,7 @@ create-marker() {
 if test $all == 1 || test $bundler == 1; then
     marker=$(get-marker bundler "$(cat ./Gemfile)" "$(cat ./.bundle/*)")
     if ! test -f "$marker"; then
-        bundler install
+        mise exec -- bundler install
         create-marker "$marker"
     fi
 fi

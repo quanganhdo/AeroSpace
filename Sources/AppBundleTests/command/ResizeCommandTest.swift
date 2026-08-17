@@ -25,21 +25,6 @@ final class ResizeCommandTest: XCTestCase {
         testParseCommandFail("resize smart foo", msg: "ERROR: <number> argument must be a number", exitCode: 2)
     }
 
-    func testResizeDwindleWindow() async throws {
-        let workspace = Workspace.get(byName: name)
-        workspace.rootTilingContainer.layout = .dwindle
-        let window1 = TestWindow.new(id: 1, parent: workspace.rootTilingContainer, adaptiveWeight: 100)
-        let window2 = TestWindow.new(id: 2, parent: workspace.rootTilingContainer, adaptiveWeight: 100)
-        assertEquals(window1.focusWindow(), true)
-
-        let result = await parseCommand("resize smart +10").cmdOrDie.run(.defaultEnv, .emptyStdin)
-
-        assertEquals(result.exitCode.rawValue, 0)
-        assertEquals(window1.getWeight(.h) - window2.getWeight(.h), 20)
-        try await workspace.layoutWorkspace()
-        assertEquals(window1.getWeight(.h) - window2.getWeight(.h), 20)
-    }
-
     func testWidthAdd_growsTargetShrinksSiblings() async {
         var window1: Window!
         var window2: Window!
@@ -177,5 +162,20 @@ final class ResizeCommandTest: XCTestCase {
 
         let result = await parseCommand("resize width +2").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(result.exitCode.rawValue, 2)
+    }
+
+    func testResizeDwindleWindow() async throws {
+        let workspace = Workspace.get(byName: name)
+        workspace.rootTilingContainer.layout = .dwindle
+        let window1 = TestWindow.new(id: 1, parent: workspace.rootTilingContainer, adaptiveWeight: 100)
+        let window2 = TestWindow.new(id: 2, parent: workspace.rootTilingContainer, adaptiveWeight: 100)
+        assertEquals(window1.focusWindow(), true)
+
+        let result = await parseCommand("resize smart +10").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(window1.getWeight(.h) - window2.getWeight(.h), 20)
+        try await workspace.layoutWorkspace()
+        assertEquals(window1.getWeight(.h) - window2.getWeight(.h), 20)
     }
 }

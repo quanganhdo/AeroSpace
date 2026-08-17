@@ -127,6 +127,94 @@ final class MoveCommandTest: XCTestCase {
         assertEquals(window1.hWeight, 1)
     }
 
+    func testDwindleSwapPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let window1 = TestWindow.new(id: 1, parent: root, adaptiveWeight: 70)
+        let window2 = TestWindow.new(id: 2, parent: root, adaptiveWeight: 30)
+        try await workspace.layoutWorkspace()
+        let slot1 = try XCTUnwrap(window1.lastAppliedLayoutVirtualRect)
+        let slot2 = try XCTUnwrap(window2.lastAppliedLayoutVirtualRect)
+        _ = window1.focusWindow()
+
+        await parseCommand("move right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(window1.lastAppliedLayoutVirtualRect, slot2)
+        assertMoveRectEquals(window2.lastAppliedLayoutVirtualRect, slot1)
+    }
+
+    func testDwindleMoveInPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let movingWindow = TestWindow.new(id: 1, parent: root, adaptiveWeight: 30)
+        let nested = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let unaffectedWindow = TestWindow.new(id: 2, parent: nested, adaptiveWeight: 60)
+        let targetWindow = TestWindow.new(id: 3, parent: nested, adaptiveWeight: 40)
+        try await workspace.layoutWorkspace()
+        let movingSlot = try XCTUnwrap(movingWindow.lastAppliedLayoutVirtualRect)
+        let unaffectedSlot = try XCTUnwrap(unaffectedWindow.lastAppliedLayoutVirtualRect)
+        let targetSlot = try XCTUnwrap(targetWindow.lastAppliedLayoutVirtualRect)
+        _ = movingWindow.focusWindow()
+
+        await parseCommand("move right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(movingWindow.lastAppliedLayoutVirtualRect, targetSlot)
+        assertMoveRectEquals(targetWindow.lastAppliedLayoutVirtualRect, movingSlot)
+        assertMoveRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedSlot)
+    }
+
+    func testDwindleMoveOutPreservesLayoutSlots() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let outerWindow = TestWindow.new(id: 1, parent: root, adaptiveWeight: 30)
+        let nested = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let movingWindow = TestWindow.new(id: 2, parent: nested, adaptiveWeight: 60)
+        let unaffectedWindow = TestWindow.new(id: 3, parent: nested, adaptiveWeight: 40)
+        try await workspace.layoutWorkspace()
+        let outerSlot = try XCTUnwrap(outerWindow.lastAppliedLayoutVirtualRect)
+        let movingSlot = try XCTUnwrap(movingWindow.lastAppliedLayoutVirtualRect)
+        let unaffectedSlot = try XCTUnwrap(unaffectedWindow.lastAppliedLayoutVirtualRect)
+        _ = movingWindow.focusWindow()
+
+        await parseCommand("move left").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertMoveRectEquals(movingWindow.lastAppliedLayoutVirtualRect, outerSlot)
+        assertMoveRectEquals(outerWindow.lastAppliedLayoutVirtualRect, movingSlot)
+        assertMoveRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedSlot)
+    }
+
+    func testDwindleMoveOutTargetsDirectionalLeafWhenBothSlotsAreContainers() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let leftSlot = TilingContainer(parent: root, adaptiveWeight: 60, .v, .dwindle, index: INDEX_BIND_LAST)
+        let movingWindow = TestWindow.new(id: 1, parent: leftSlot, adaptiveWeight: 70)
+        let leftUnaffectedWindow = TestWindow.new(id: 2, parent: leftSlot, adaptiveWeight: 30)
+        let rightSlot = TilingContainer(parent: root, adaptiveWeight: 40, .v, .dwindle, index: INDEX_BIND_LAST)
+        TestWindow.new(id: 3, parent: rightSlot, adaptiveWeight: 60)
+        let targetWindow = TestWindow.new(id: 4, parent: rightSlot, adaptiveWeight: 40)
+        targetWindow.markAsMostRecentChild()
+        try await workspace.layoutWorkspace()
+        let movingSlot = try XCTUnwrap(movingWindow.lastAppliedLayoutVirtualRect)
+        let leftUnaffectedSlot = try XCTUnwrap(leftUnaffectedWindow.lastAppliedLayoutVirtualRect)
+        let targetSlot = try XCTUnwrap(targetWindow.lastAppliedLayoutVirtualRect)
+        _ = movingWindow.focusWindow()
+
+        let result = await parseCommand("move right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        try await workspace.layoutWorkspace()
+
+        assertEquals(result.exitCode.rawValue, 0)
+        assertMoveRectEquals(movingWindow.lastAppliedLayoutVirtualRect, targetSlot)
+        assertMoveRectEquals(targetWindow.lastAppliedLayoutVirtualRect, movingSlot)
+        assertMoveRectEquals(leftUnaffectedWindow.lastAppliedLayoutVirtualRect, leftUnaffectedSlot)
+    }
+
     func testMoveIn_newWeight() async {
         var window1: Window!
         var window2: Window!
@@ -165,6 +253,41 @@ final class MoveCommandTest: XCTestCase {
             ]),
         )
         assertEquals(result.exitCode.rawValue, 0)
+    }
+
+    func testDwindleCreateImplicitContainerPreservesDwindleRootForNextInsertion() async {
+        let workspace = Workspace.get(byName: name)
+        workspace.rootTilingContainer.apply {
+            $0.layout = .dwindle
+            TestWindow.new(id: 1, parent: $0)
+            assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+            TestWindow.new(id: 3, parent: $0)
+        }
+
+        let result = await parseCommand("move up").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(
+            workspace.layoutDescription,
+            .workspace([
+                .dwindle([
+                    .window(2),
+                    .dwindle([.window(1), .window(3)]),
+                ]),
+            ]),
+        )
+
+        let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace, window: nil)
+        TestWindow.new(id: 4, parent: binding.parent, adaptiveWeight: binding.adaptiveWeight)
+
+        assertEquals(
+            workspace.layoutDescription,
+            .workspace([
+                .dwindle([
+                    .dwindle([.window(2), .window(4)]),
+                    .dwindle([.window(1), .window(3)]),
+                ]),
+            ]),
+        )
     }
 
     func testStop_onRootNode() async {
@@ -355,11 +478,27 @@ enum LayoutDescription: Equatable {
     case v_tiles([LayoutDescription])
     case h_accordion([LayoutDescription])
     case v_accordion([LayoutDescription])
-    case dwindle([LayoutDescription])
     case floatingWindowsContainer([LayoutDescription])
+    case dwindle([LayoutDescription])
     case window(UInt32)
     case macosPopupWindowsContainer
     case macosMinimized
     case macosHiddeAppWindow
     case macosFullscreen
+}
+
+private func assertMoveRectEquals(
+    _ actual: Rect?,
+    _ expected: Rect,
+    file: StaticString = #filePath,
+    line: UInt = #line,
+) {
+    guard let actual else {
+        XCTFail("Expected an applied layout rectangle", file: file, line: line)
+        return
+    }
+    assertEquals(actual.topLeftX, expected.topLeftX, additionalMsg: "topLeftX", file: file, line: line)
+    assertEquals(actual.topLeftY, expected.topLeftY, additionalMsg: "topLeftY", file: file, line: line)
+    assertEquals(actual.width, expected.width, additionalMsg: "width", file: file, line: line)
+    assertEquals(actual.height, expected.height, additionalMsg: "height", file: file, line: line)
 }

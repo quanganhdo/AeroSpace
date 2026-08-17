@@ -3,16 +3,23 @@ cd "$(dirname "$0")"
 source ./script/setup.sh
 
 build_version="0.0.0-SNAPSHOT"
+build_number="$(git rev-list --count HEAD)"
 codesign_identity="aerospace-codesign-certificate"
 timestamp_signatures=0
 while test $# -gt 0; do
     case $1 in
         --build-version) build_version="$2"; shift 2;;
+        --build-number) build_number="$2"; shift 2;;
         --codesign-identity) codesign_identity="$2"; shift 2;;
         --timestamp-signatures) timestamp_signatures=1; shift;;
         *) echo "Unknown option $1" > /dev/stderr; exit 1 ;;
     esac
 done
+
+if ! [[ "$build_number" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid build number: $build_number" > /dev/stderr
+    exit 1
+fi
 
 #############
 ### BUILD ###
@@ -23,7 +30,11 @@ done
 
 ./generate.sh
 ./script/check-uncommitted-files.sh
-./generate.sh --build-version "$build_version" --codesign-identity "$codesign_identity" --generate-git-hash
+./generate.sh \
+    --build-version "$build_version" \
+    --build-number "$build_number" \
+    --codesign-identity "$codesign_identity" \
+    --generate-git-hash
 
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors # CLI
 
@@ -50,13 +61,15 @@ cd ./xcode
         -destination "generic/platform=macOS" \
         -configuration "$xcode_configuration" \
         -derivedDataPath .xcode-build \
-        ${extra_xcodebuild_args[@]+"${extra_xcodebuild_args[@]}"}
+        "${extra_xcodebuild_args[@]}"
 cd -
 
 git checkout .
 
-cp -r "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
-cp -r .build/apple/Products/Release/aerospace .release
+/usr/bin/ditto \
+    "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" \
+    .release/AeroSpace.app
+cp .build/release/aerospace .release
 
 ################
 ### SIGN CLI ###
@@ -67,32 +80,31 @@ if test "$timestamp_signatures" = 1; then
     codesign_args+=(--timestamp)
 fi
 codesign "${codesign_args[@]}" .release/aerospace
+./script/embed-release-support-files.sh .release/AeroSpace.app .release/aerospace
+./script/sign-sparkle-for-distribution.sh \
+    .release/AeroSpace.app \
+    "$codesign_identity" \
+    "$timestamp_signatures"
+codesign "${codesign_args[@]}" .release/AeroSpace.app
 
 ################
 ### VALIDATE ###
 ################
 
-expected_layout=$(cat <<EOF
-.release/AeroSpace.app
-.release/AeroSpace.app/Contents
-.release/AeroSpace.app/Contents/_CodeSignature
-.release/AeroSpace.app/Contents/_CodeSignature/CodeResources
-.release/AeroSpace.app/Contents/MacOS
-.release/AeroSpace.app/Contents/MacOS/AeroSpace
-.release/AeroSpace.app/Contents/Resources
-.release/AeroSpace.app/Contents/Resources/default-config.toml
-.release/AeroSpace.app/Contents/Resources/AppIcon.icns
-.release/AeroSpace.app/Contents/Resources/Assets.car
-.release/AeroSpace.app/Contents/Info.plist
-.release/AeroSpace.app/Contents/PkgInfo
-EOF
+required_app_files=(
+    .release/AeroSpace.app/Contents/MacOS/AeroSpace
+    .release/AeroSpace.app/Contents/Helpers/aerospace
+    .release/AeroSpace.app/Contents/Resources/default-config.toml
+    .release/AeroSpace.app/Contents/Resources/AppIcon.icns
+    .release/AeroSpace.app/Contents/Resources/Assets.car
+    .release/AeroSpace.app/Contents/Info.plist
 )
-
-if test "$expected_layout" != "$(find .release/AeroSpace.app)"; then
-    echo "!!! Expect/Actual layout don't match !!!"
-    find .release/AeroSpace.app
-    exit 1
-fi
+for required_file in "${required_app_files[@]}"; do
+    if ! test -e "$required_file"; then
+        echo "Missing required app file: $required_file" > /dev/stderr
+        exit 1
+    fi
+done
 
 check-universal-binary() {
     if ! file "$1" | grep --fixed-string -q "Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64"; then
@@ -110,9 +122,11 @@ check-contains-hash() {
 }
 
 check-universal-binary .release/AeroSpace.app/Contents/MacOS/AeroSpace
+check-universal-binary .release/AeroSpace.app/Contents/Helpers/aerospace
 check-universal-binary .release/aerospace
 
 check-contains-hash .release/AeroSpace.app/Contents/MacOS/AeroSpace
+check-contains-hash .release/AeroSpace.app/Contents/Helpers/aerospace
 check-contains-hash .release/aerospace
 
 codesign --verify --deep --strict --verbose=2 .release/AeroSpace.app
@@ -124,11 +138,19 @@ codesign --verify --strict --verbose=2 .release/aerospace
 
 mkdir -p ".release/AeroSpace-v$build_version/manpage" && cp .man/*.1 ".release/AeroSpace-v$build_version/manpage"
 cp -r ./legal ".release/AeroSpace-v$build_version/legal"
+rm -f ".release/AeroSpace-v$build_version/legal/LICENSE.txt"
+cp LICENSE.txt ".release/AeroSpace-v$build_version/legal/LICENSE.txt"
 cp -r .shell-completion ".release/AeroSpace-v$build_version/shell-completion"
 cd .release
     mkdir -p "AeroSpace-v$build_version/bin" && cp -r aerospace "AeroSpace-v$build_version/bin"
-    cp -r AeroSpace.app "AeroSpace-v$build_version"
-    zip -r "AeroSpace-v$build_version.zip" "AeroSpace-v$build_version"
+    /usr/bin/ditto AeroSpace.app "AeroSpace-v$build_version/AeroSpace.app"
+    codesign --verify --deep --strict --verbose=2 "AeroSpace-v$build_version/AeroSpace.app"
+    /usr/bin/ditto --norsrc -c -k --keepParent \
+        "AeroSpace-v$build_version" \
+        "AeroSpace-v$build_version.zip"
+    /usr/bin/ditto --norsrc -c -k --keepParent \
+        "AeroSpace-v$build_version/AeroSpace.app" \
+        "AeroSpace-v$build_version-sparkle.zip"
 cd -
 
 #################

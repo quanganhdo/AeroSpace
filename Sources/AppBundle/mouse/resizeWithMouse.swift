@@ -44,10 +44,10 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
         case .floatingWindowsContainer, .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
              .macosPopupWindowsContainer, .macosHiddenAppsWindowsContainer:
             return // Nothing to do for floating, or unconventional windows
-        case .tilingContainer(let tilingParent):
+        case .tilingContainer(let parent):
             guard let rect = try await window.getAxRect(.cancellable) else { return }
             guard let lastAppliedLayoutRect = window.lastAppliedLayoutPhysicalRect else { return }
-            let parentLayout = tilingParent.layout
+            let parentLayout = parent.layout
             let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: parentLayout) ?? (nil, nil)
             let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: parentLayout) ?? (nil, nil)
             let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: parentLayout) ?? (nil, nil)

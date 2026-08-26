@@ -37,10 +37,11 @@ final class TestWindow: Window, CustomStringConvertible {
         _rect
     }
 
-    override func setAxFrame(_ topLeft: CGPoint?, _ size: CGSize?) {}
     @MainActor override func getAxSize(_ cm: CancellationMode) async throws -> CGSize? {
         _rect.map { CGSize(width: $0.width, height: $0.height) }
     }
 
     override func isMacosFullscreen(_ cm: CancellationMode) async throws -> Bool { isMacosFullscreenForTest }
+
+    override func setAxFrame(_ topLeft: CGPoint?, _ size: CGSize?) {}
 }

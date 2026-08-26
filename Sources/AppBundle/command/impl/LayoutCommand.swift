@@ -40,9 +40,7 @@ struct LayoutCommand: Command {
                     return .succ(io.err(msg))
             }
         }
-        if let window = target.windowOrNil {
-            bindWindowsToRootLayoutIfLayoutIsDwindle(window: window)
-        }
+        bindWindowsToRootLayoutIfLayoutIsDwindle(workspace: target.workspace)
         switch targetDescription {
             case .h_accordion:
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: .h, node: node)
@@ -57,17 +55,14 @@ struct LayoutCommand: Command {
             case .tiles:
                 return changeTilingLayout(io, targetLayout: .tiles, targetOrientation: nil, node: node)
             case .dwindle:
-                if changeTilingLayout(io, targetLayout: .dwindle, targetOrientation: nil, node: node) == .succ {
-                    if let window = target.windowOrNil {
-                        do {
-                            try await relayoutAllWindows(window: window, .nonCancellable)
-                        } catch {
-                            return .fail(io.err(bugPrompt()))
-                        }
-                    }
-                    return .succ
+                let result = changeTilingLayout(io, targetLayout: .dwindle, targetOrientation: nil, node: node)
+                guard result == .succ else { return result }
+                do {
+                    try await relayoutAllWindows(workspace: target.workspace)
+                } catch {
+                    return .fail(io.err(bugPrompt()))
                 }
-                return .fail
+                return .succ
             case .horizontal:
                 return changeTilingLayout(io, targetLayout: nil, targetOrientation: .h, node: node)
             case .vertical:
@@ -134,20 +129,19 @@ extension ConventionalWindowParentCases {
 }
 
 extension LayoutCommand {
-    @MainActor func bindWindowsToRootLayoutIfLayoutIsDwindle(window: Window) {
-        if let rootTilingContainer = window.nodeWorkspace?.rootTilingContainer, rootTilingContainer.layout == .dwindle {
-            let allWindows = window.nodeWorkspace?.allLeafWindowsRecursive
-            allWindows?.forEach { $0.unbindFromParent() }
-            allWindows?.forEach { $0.bind(to: rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST) }
-        }
+    @MainActor func bindWindowsToRootLayoutIfLayoutIsDwindle(workspace: Workspace) {
+        let rootTilingContainer = workspace.rootTilingContainer
+        guard rootTilingContainer.layout == .dwindle else { return }
+        let allWindows = workspace.allLeafWindowsRecursive
+        allWindows.forEach { $0.unbindFromParent() }
+        allWindows.forEach { $0.bind(to: rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST) }
     }
 
-    @MainActor func relayoutAllWindows(window: Window, _ cm: CancellationMode) async throws {
-        guard let workspace = window.nodeWorkspace else { return }
+    @MainActor func relayoutAllWindows(workspace: Workspace) async throws {
         let allWindows = workspace.allLeafWindowsRecursive
         allWindows.forEach { $0.unbindFromParent() }
         for element in allWindows {
-            try await element.relayoutWindow(on: workspace, cm, forceTile: false)
+            try await element.relayoutWindow(on: workspace, .nonCancellable, forceTile: false)
         }
     }
 }

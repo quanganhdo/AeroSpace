@@ -14,7 +14,7 @@ rm -rf .shell-completion && mkdir -p \
     --fish-script .shell-completion/fish/aerospace.fish \
     --bash-script .shell-completion/bash/aerospace
 
-bash_bin=bash
+bash_bin=not-outdated-bash
 if ! ("$bash_bin" --version | grep -q 'version 5') && test -x /opt/homebrew/bin/bash; then
     bash_bin=/opt/homebrew/bin/bash
 fi

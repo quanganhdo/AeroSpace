@@ -259,7 +259,7 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
         )
     } else {
         if let mru = workspace.mostRecentWindowRecursive {
-            if let parentContainer = mru.parent as? TilingContainer {
+            if let (parentContainer, splitTarget) = findNearestDwindleSlot(from: mru) {
                 if parentContainer.children.count == 1 {
                     return BindingData(
                         parent: parentContainer,
@@ -268,19 +268,19 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
                     )
                 }
 
-                if parentContainer.children.count == 2, let indexOfMru = parentContainer.children.firstIndex(of: mru) {
-
-                    mru.unbindFromParent()
+                if parentContainer.children.count == 2 {
+                    let hasAppliedLayout = splitTarget.lastAppliedLayoutVirtualRect != nil
+                    let previousBinding = splitTarget.unbindFromParent()
 
                     let newContainer = TilingContainer(
                         parent: parentContainer,
-                        adaptiveWeight: WEIGHT_AUTO,
+                        adaptiveWeight: hasAppliedLayout ? previousBinding.adaptiveWeight : WEIGHT_AUTO,
                         parentContainer.orientation.opposite,
-                        parentContainer.layout,
-                        index: indexOfMru == 0 ? 0 : INDEX_BIND_LAST,
+                        .dwindle,
+                        index: previousBinding.index,
                     )
 
-                    mru.bind(
+                    splitTarget.bind(
                         to: newContainer,
                         adaptiveWeight: WEIGHT_AUTO,
                         index: INDEX_BIND_LAST,
@@ -301,6 +301,18 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
         adaptiveWeight: WEIGHT_AUTO,
         index: INDEX_BIND_LAST,
     )
+}
+
+@MainActor
+private func findNearestDwindleSlot(from node: TreeNode) -> (parent: TilingContainer, slot: TreeNode)? {
+    var slot = node
+    while let parent = slot.parent as? TilingContainer {
+        if parent.layout == .dwindle {
+            return (parent, slot)
+        }
+        slot = parent
+    }
+    return nil
 }
 
 @MainActor

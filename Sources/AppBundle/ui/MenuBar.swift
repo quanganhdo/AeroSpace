@@ -1,17 +1,18 @@
 import Common
 import Foundation
+import Sparkle
 import SwiftUI
 
 @MainActor
-public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it be converted to "SwiftUI struct"?
+public func menuBar(viewModel: TrayMenuModel, updater: SPUUpdater) -> some Scene { // todo should it be converted to "SwiftUI struct"?
     MenuBarExtra {
         let shortIdentification = "\(aeroSpaceAppName) v\(aeroSpaceAppVersion) \(gitShortHash)"
         let identification      = "\(aeroSpaceAppName) v\(aeroSpaceAppVersion) \(gitHash)"
         Text(shortIdentification)
         Button("Copy to clipboard") { identification.copyToClipboard() }
             .keyboardShortcut("C", modifiers: .command)
+        CheckForUpdatesView(updater: updater)
         Divider()
-
         if viewModel.axPermissionStatus == .granted {
             if let token: RunSessionGuard = .isServerEnabled, viewModel.lastReloadConfigContainedWarnings {
                 Button {
@@ -114,7 +115,7 @@ private func workspaceLayoutButton(
                 var args = LayoutCmdArgs(rawArgs: [], toggleBetween: [layout])
                 args.root = true
                 let command: any Command = LayoutCommand(args: args)
-                _ = try await Shell<any Command>.cmd(command).run(.defaultEnv.withWorkspaceName(workspace.name), .emptyStdin)
+                _ = await Shell<any Command>.cmd(command).run(.defaultEnv.withWorkspaceName(workspace.name), .emptyStdin)
             }
         }
     } label: {

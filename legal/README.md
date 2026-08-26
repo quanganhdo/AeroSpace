@@ -25,3 +25,8 @@ swift-collections is used for more advanced Swift collections.
 [ISSoundAdditions GitHub link](https://github.com/InerziaSoft/ISSoundAdditions).
 [ISSoundAdditions MIT license](./third-party-license/LICENSE-ISSoundAdditions.txt).
 ISSoundAdditions is used as a convenient API to change system volume.
+
+**Sparkle**
+[Sparkle GitHub link](https://github.com/sparkle-project/Sparkle).
+[Sparkle license](./third-party-license/LICENSE-Sparkle.txt).
+Sparkle provides secure application updates.

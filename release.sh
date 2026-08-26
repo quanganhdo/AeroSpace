@@ -6,6 +6,7 @@ set -o pipefail
 cd "$(dirname "$0")"
 
 build_version=""
+build_number=""
 tap_dir="../homebrew-tap"
 brew_tap="quanganhdo/tap"
 github_repo="quanganhdo/AeroSpace"
@@ -24,6 +25,7 @@ Homebrew tap.
 
 Options:
   --build-version VERSION       Required, for example 0.20.3-Beta-cotton.3
+  --build-number NUMBER         Monotonic Sparkle build number (default: git commit count)
   --tap-dir PATH                Homebrew tap checkout (default: ../homebrew-tap)
   --brew-tap USER/TAP           Homebrew tap name (default: $brew_tap)
   --github-repo OWNER/REPO      GitHub repository (default: $github_repo)
@@ -39,6 +41,7 @@ EOF
 while test $# -gt 0; do
     case $1 in
         --build-version) build_version="$2"; shift 2;;
+        --build-number) build_number="$2"; shift 2;;
         --tap-dir) tap_dir="$2"; shift 2;;
         --brew-tap) brew_tap="$2"; shift 2;;
         --github-repo) github_repo="$2"; shift 2;;
@@ -58,6 +61,14 @@ if test -z "$build_version"; then
     exit 1
 fi
 
+if test -z "$build_number"; then
+    build_number="$(git rev-list --count HEAD)"
+fi
+if ! [[ "$build_number" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid build number: $build_number" > /dev/stderr
+    exit 1
+fi
+
 case "$build_version" in
     *[!A-Za-z0-9._-]*)
         echo "Invalid build version: $build_version" > /dev/stderr
@@ -72,6 +83,8 @@ tap_dir="$(cd "$tap_dir" 2> /dev/null && pwd)" || {
 
 tag="v$build_version"
 release_zip="$PWD/.release/AeroSpace-v$build_version.zip"
+sparkle_zip="$PWD/.release/AeroSpace-v$build_version-sparkle.zip"
+appcast_path="$PWD/.release/appcast.xml"
 cask_path="$tap_dir/Casks/aerospace.rb"
 
 for command in brew gh git mise shasum; do
@@ -109,7 +122,11 @@ if test -n "$(git -C "$tap_dir" status --porcelain)"; then
     exit 1
 fi
 
-gh auth status > /dev/null
+authenticated_user="$(gh api user --jq .login)"
+if test "$authenticated_user" != "${github_repo%%/*}"; then
+    echo "GitHub token belongs to $authenticated_user, expected ${github_repo%%/*}" > /dev/stderr
+    exit 1
+fi
 git fetch origin main
 git -C "$tap_dir" fetch origin main
 
@@ -137,14 +154,18 @@ fi
 if test "$skip_build" = 0; then
     ./notarize-release.sh \
         --build-version "$build_version" \
+        --build-number "$build_number" \
         --codesign-identity "$codesign_identity" \
         --keychain-profile "$keychain_profile"
 fi
 
-if ! test -f "$release_zip"; then
-    echo "Release ZIP not found: $release_zip" > /dev/stderr
-    exit 1
-fi
+for required_zip in "$release_zip" "$sparkle_zip"; do
+    if ! test -f "$required_zip"; then
+        echo "Release ZIP not found: $required_zip" > /dev/stderr
+        exit 1
+    fi
+done
+./script/generate-sparkle-appcast.sh "$sparkle_zip" "$github_repo" "$tag"
 
 if test -n "$(git status --porcelain)"; then
     echo "Release build left tracked or untracked source changes" > /dev/stderr
@@ -160,25 +181,30 @@ if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
 fi
 git push origin "$tag"
 
-asset_name="$(basename "$release_zip")"
 if gh release view "$tag" --repo "$github_repo" > /dev/null 2>&1; then
-    published_digest="$(
-        gh release view "$tag" \
-            --repo "$github_repo" \
-            --json assets \
-            --jq ".assets[] | select(.name == \"$asset_name\") | .digest"
-    )"
-    if test -z "$published_digest"; then
-        gh release upload "$tag" "$release_zip" --repo "$github_repo"
-    elif test "$published_digest" != "sha256:$sha"; then
-        echo "Published asset checksum differs for $asset_name" > /dev/stderr
-        echo "Use a new build version instead of replacing a release asset" > /dev/stderr
-        exit 1
-    fi
+    for asset_path in "$release_zip" "$sparkle_zip" "$appcast_path"; do
+        asset_name="$(basename "$asset_path")"
+        asset_sha="$(shasum -a 256 "$asset_path" | awk '{print $1}')"
+        published_digest="$(
+            gh release view "$tag" \
+                --repo "$github_repo" \
+                --json assets \
+                --jq ".assets[] | select(.name == \"$asset_name\") | .digest"
+        )"
+        if test -z "$published_digest"; then
+            gh release upload "$tag" "$asset_path" --repo "$github_repo"
+        elif test "$published_digest" != "sha256:$asset_sha"; then
+            echo "Published asset checksum differs for $asset_name" > /dev/stderr
+            echo "Use a new build version instead of replacing a release asset" > /dev/stderr
+            exit 1
+        fi
+    done
 else
     create_args=(
         "$tag"
         "$release_zip"
+        "$sparkle_zip"
+        "$appcast_path"
         --repo "$github_repo"
         --title "AeroSpace $build_version"
         --verify-tag

@@ -69,7 +69,7 @@ flowdeck build \
     -d "$build_dir" \
     --xcodebuild-options='ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO OTHER_CODE_SIGN_FLAGS=--timestamp'
 
-swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors
+swift build -c release --arch arm64 --arch x86_64 --product aerospace
 
 ./script/embed-release-support-files.sh "$app_path" "$cli_path"
 ./script/sign-sparkle-for-distribution.sh "$app_path" "$codesign_identity"

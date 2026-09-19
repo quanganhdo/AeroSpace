@@ -36,7 +36,9 @@ fi
     --codesign-identity "$codesign_identity" \
     --generate-git-hash
 
-swift build -c release --arch arm64 --arch x86_64 --product aerospace # CLI
+swift_build_cli=(build -c release --arch arm64 --arch x86_64 --product aerospace)
+swift "${swift_build_cli[@]}" -Xswiftc -warnings-as-errors # CLI
+cli_bin_path="$(swift "${swift_build_cli[@]}" --show-bin-path)"
 
 # todo: make xcodebuild use the same toolchain as swift
 # toolchain="$(plutil -extract CFBundleIdentifier raw ~/Library/Developer/Toolchains/swift-6.1-RELEASE.xctoolchain/Info.plist)"
@@ -69,7 +71,7 @@ git checkout .
 /usr/bin/ditto \
     "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" \
     .release/AeroSpace.app
-cp .build/release/aerospace .release
+cp "$cli_bin_path/aerospace" .release
 
 ################
 ### SIGN CLI ###

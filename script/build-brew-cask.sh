@@ -70,6 +70,11 @@ cask "$cask_name" do
   $conflicts_with_casks
   depends_on macos: :ventura # macOS 13
 
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{staged_path}}/$zip_root_dir/bin/aerospace"], must_succeed: false
+    run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{appdir}}/AeroSpace.app"], must_succeed: false
+  end
+
   app "$zip_root_dir/AeroSpace.app"
   binary "#{appdir}/AeroSpace.app/Contents/Helpers/aerospace"
   binary "#{appdir}/AeroSpace.app/Contents/Resources/shell-completion/zsh/_aerospace",

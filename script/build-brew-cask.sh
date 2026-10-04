@@ -68,12 +68,8 @@ cask "$cask_name" do
 
   auto_updates true
   $conflicts_with_casks
+  depends_on arch: :arm64
   depends_on macos: :ventura # macOS 13
-
-  postflight_steps do
-    run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{staged_path}}/$zip_root_dir/bin/aerospace"], must_succeed: false
-    run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{appdir}}/AeroSpace.app"], must_succeed: false
-  end
 
   app "$zip_root_dir/AeroSpace.app"
   binary "#{appdir}/AeroSpace.app/Contents/Helpers/aerospace"
@@ -84,5 +80,14 @@ cask "$cask_name" do
   binary "#{appdir}/AeroSpace.app/Contents/Resources/shell-completion/fish/aerospace.fish",
          target: "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/aerospace.fish"
 $(render_manpage_artifacts)
+
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args:         ["-d", "com.apple.quarantine", "{{staged_path}}/$zip_root_dir/bin/aerospace"],
+        must_succeed: false
+    run "/usr/bin/xattr",
+        args:         ["-d", "com.apple.quarantine", "{{appdir}}/AeroSpace.app"],
+        must_succeed: false
+  end
 end
 EOF

@@ -39,4 +39,11 @@ if ! test -f "$input_dir/appcast.xml"; then
     echo "Sparkle did not generate appcast.xml" > /dev/stderr
     exit 1
 fi
+# Sparkle 2.9+ infers this requirement from the arm64-only app executable.
+# Reject feeds that could offer an incompatible update to an Intel Mac.
+arm64_feed_xpath='boolean(/rss/channel/item) and not(/rss/channel/item[not(*[local-name() = "hardwareRequirements" and normalize-space(.) = "arm64"])])'
+if test "$(/usr/bin/xmllint --xpath "$arm64_feed_xpath" "$input_dir/appcast.xml")" != true; then
+    echo "Sparkle appcast must require arm64 for every update" >&2
+    exit 1
+fi
 cp "$input_dir/appcast.xml" "$output_path"

@@ -62,6 +62,12 @@ If you only plan to build the debug version of AeroSpace, you can run it from th
 ### Notarized release
 
 The release app uses bundle identifier `do.anh.Aerospace` and enables Hardened Runtime.
+Release builds target Apple Silicon (`arm64`) only, including the CLI and Sparkle helpers.
+The packaging scripts thin prebuilt frameworks before signing and reject any remaining
+Intel or universal Mach-O binaries. The appcast must include
+`<sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>`, and the Homebrew
+cask requires `arch: :arm64`. The minimum macOS version remains 13.
+`v0.21.3-Beta-cotton.7` is the last Intel-compatible release.
 
 Store notarization credentials in Keychain once:
 

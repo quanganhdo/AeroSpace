@@ -27,6 +27,12 @@ end
 content.sub!(/^  homepage (.+)\n  auto_updates true\n\n  conflicts_with /,
              "  homepage \\1\n\n  auto_updates true\n  conflicts_with ")
 
+unless content.match?(/^  depends_on arch: :arm64$/)
+  abort "Expected exactly one macOS dependency in #{path}" unless content.scan(/^  depends_on macos: .+$/).length == 1
+  abort "Unexpected architecture dependency in #{path}" if content.match?(/^  depends_on arch:/)
+  content.sub!(/^  depends_on macos: /, "  depends_on arch: :arm64\n  depends_on macos: ")
+end
+
 artifact_migrations = {
   '"AeroSpace-v#{version}/bin/aerospace"' =>
     '"#{appdir}/AeroSpace.app/Contents/Helpers/aerospace"',

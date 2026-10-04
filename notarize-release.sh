@@ -47,8 +47,8 @@ mise exec -- ./build-shell-completion.sh
     --ignore-cmd-help
 
 build_dir=".notarization-build"
-app_path="$build_dir/Build/Products/Release/AeroSpace.app"
-cli_path=".build/release/aerospace"
+built_app_path="$build_dir/Build/Products/Release/AeroSpace.app"
+app_path="$build_dir/AeroSpace.app"
 release_dir=".release/AeroSpace-v$build_version"
 release_zip=".release/AeroSpace-v$build_version.zip"
 sparkle_zip=".release/AeroSpace-v$build_version-sparkle.zip"
@@ -67,9 +67,14 @@ flowdeck build \
     -D "My Mac" \
     -C Release \
     -d "$build_dir" \
-    --xcodebuild-options='ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO OTHER_CODE_SIGN_FLAGS=--timestamp'
+    --xcodebuild-options='ARCHS=arm64 ONLY_ACTIVE_ARCH=NO OTHER_CODE_SIGN_FLAGS=--timestamp'
 
-swift build -c release --arch arm64 --arch x86_64 --product aerospace
+swift_cli_build=(build -c release --arch arm64 --product aerospace)
+swift "${swift_cli_build[@]}"
+cli_path="$(swift "${swift_cli_build[@]}" --show-bin-path)/aerospace"
+
+# Disable APFS cloning so ditto actually thins prebuilt frameworks before signing.
+/usr/bin/ditto --noclone --arch arm64 "$built_app_path" "$app_path"
 
 ./script/embed-release-support-files.sh "$app_path" "$cli_path"
 ./script/sign-sparkle-for-distribution.sh "$app_path" "$codesign_identity"
@@ -77,8 +82,7 @@ codesign --force --options runtime --timestamp --sign "$codesign_identity" "$app
 codesign --force --options runtime --timestamp --sign "$codesign_identity" "$app_path"
 
 codesign --verify --deep --strict --verbose=2 "$app_path"
-file "$app_path/Contents/MacOS/AeroSpace" | grep --fixed-string "Mach-O universal binary with 2 architectures"
-file "$app_path/Contents/Helpers/aerospace" | grep --fixed-string "Mach-O universal binary with 2 architectures"
+./script/check-arm64-binaries.sh "$app_path"
 
 mkdir -p "$release_dir/bin" "$release_dir/manpage"
 /usr/bin/ditto "$app_path" "$release_dir/AeroSpace.app"

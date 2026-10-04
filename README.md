@@ -4,6 +4,9 @@
 
 AeroSpace is an i3-like tiling window manager for macOS
 
+This Cotton fork targets Apple Silicon (`arm64`) on macOS 13 or later.
+`v0.21.3-Beta-cotton.7` is the last release that supports Intel Macs.
+
 Videos:
 - [YouTube 91 sec Demo](https://www.youtube.com/watch?v=UOl7ErqWbrk)
 - [YouTube Guide by Josean Martinez](https://www.youtube.com/watch?v=-FoWClVHG5g)

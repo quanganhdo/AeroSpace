@@ -36,7 +36,7 @@ fi
     --codesign-identity "$codesign_identity" \
     --generate-git-hash
 
-swift_build_cli=(build -c release --arch arm64 --arch x86_64 --product aerospace)
+swift_build_cli=(build -c release --arch arm64 --product aerospace)
 swift "${swift_build_cli[@]}" -Xswiftc -warnings-as-errors # CLI
 cli_bin_path="$(swift "${swift_build_cli[@]}" --show-bin-path)"
 
@@ -54,12 +54,13 @@ cd ./xcode
         -destination "generic/platform=macOS" \
         -configuration "$xcode_configuration" \
         -derivedDataPath .xcode-build \
+        ARCHS=arm64 \
         "${extra_xcodebuild_args[@]}"
 cd -
 
 git checkout .
 
-/usr/bin/ditto \
+/usr/bin/ditto --noclone --arch arm64 \
     "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" \
     .release/AeroSpace.app
 cp "$cli_bin_path/aerospace" .release
@@ -99,13 +100,6 @@ for required_file in "${required_app_files[@]}"; do
     fi
 done
 
-check-universal-binary() {
-    if ! file "$1" | grep --fixed-string -q "Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64"; then
-        echo "$1 is not a universal binary"
-        exit 1
-    fi
-}
-
 check-contains-hash() {
     hash=$(git rev-parse HEAD)
     if ! strings "$1" | grep --fixed-string "$hash" > /dev/null; then
@@ -114,9 +108,7 @@ check-contains-hash() {
     fi
 }
 
-check-universal-binary .release/AeroSpace.app/Contents/MacOS/AeroSpace
-check-universal-binary .release/AeroSpace.app/Contents/Helpers/aerospace
-check-universal-binary .release/aerospace
+./script/check-arm64-binaries.sh .release/AeroSpace.app .release/aerospace
 
 check-contains-hash .release/AeroSpace.app/Contents/MacOS/AeroSpace
 check-contains-hash .release/AeroSpace.app/Contents/Helpers/aerospace

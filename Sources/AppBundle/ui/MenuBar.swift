@@ -34,14 +34,6 @@ public func menuBar(viewModel: TrayMenuModel, updater: SPUUpdater) -> some Scene
                 }
                 Divider()
             }
-            Button {
-                NSWorkspace.shared.open(URL(string: "https://github.com/sponsors/nikitabobko").orDie())
-                viewModel.sponsorshipMessage = sponsorshipPrompts.randomElement().orDie()
-            } label: {
-                Text("Sponsor AeroSpace on GitHub")
-                Text(viewModel.sponsorshipMessage)
-            }
-            Divider()
             Button(viewModel.isEnabled ? "Disable" : "Enable") {
                 Task.startUnstructured {
                     try await runLightSession(.menuBarButton, .forceRun) {
@@ -50,7 +42,6 @@ public func menuBar(viewModel: TrayMenuModel, updater: SPUUpdater) -> some Scene
                     }
                 }
             }.keyboardShortcut("E", modifiers: .command)
-            getExperimentalUISettingsMenu(viewModel: viewModel)
             openConfigButton()
             reloadConfigButton(warningsAsErrors: false)
         } else {

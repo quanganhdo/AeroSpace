@@ -42,10 +42,11 @@ built_app_path="$build_dir/Build/Products/Release/AeroSpace.app"
 app_path="$build_dir/AeroSpace.app"
 release_dir=".release/AeroSpace-v$build_version"
 release_zip=".release/AeroSpace-v$build_version.zip"
-sparkle_zip=".release/AeroSpace-v$build_version-sparkle.zip"
+sparkle_dmg=".release/AeroSpace-v$build_version-sparkle.dmg"
+dmg_contents_dir=".release/sparkle-dmg-$build_version"
 submission_zip=".release/AeroSpace-v$build_version-notarization.zip"
 
-rm -rf "$app_path" "$release_dir" "$release_zip" "$sparkle_zip" "$submission_zip"
+rm -rf "$app_path" "$release_dir" "$release_zip" "$sparkle_dmg" "$submission_zip" "$dmg_contents_dir"
 
 build_options="ARCHS=arm64 ONLY_ACTIVE_ARCH=NO MARKETING_VERSION=$build_version CURRENT_PROJECT_VERSION=$build_number AEROSPACE_CODE_SIGN_IDENTITY=\"$codesign_identity\" AEROSPACE_BUILD_INFO_LDFLAGS=\"-sectcreate __TEXT __aero_build $build_info_file\" OTHER_CODE_SIGN_FLAGS=--timestamp"
 for scheme in AeroSpace AeroSpaceCli; do
@@ -104,5 +105,13 @@ xcrun stapler validate "$release_dir/AeroSpace.app"
 codesign --verify --strict --verbose=2 "$release_dir/bin/aerospace"
 
 /usr/bin/ditto --norsrc -c -k --keepParent "$release_dir" "$release_zip"
-/usr/bin/ditto --norsrc -c -k --keepParent "$release_dir/AeroSpace.app" "$sparkle_zip"
+mkdir -p "$dmg_contents_dir"
+/usr/bin/ditto "$release_dir/AeroSpace.app" "$dmg_contents_dir/AeroSpace.app"
+hdiutil create -ov -volname AeroSpace -srcfolder "$dmg_contents_dir" -format UDZO "$sparkle_dmg"
+codesign --force --timestamp --sign "$codesign_identity" "$sparkle_dmg"
+xcrun notarytool submit "$sparkle_dmg" --keychain-profile "$keychain_profile" --wait
+xcrun stapler staple "$sparkle_dmg"
+xcrun stapler validate "$sparkle_dmg"
+codesign --verify --strict --verbose=2 "$sparkle_dmg"
 rm "$submission_zip"
+rm -rf "$dmg_contents_dir"

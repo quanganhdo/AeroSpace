@@ -83,7 +83,7 @@ tap_dir="$(cd "$tap_dir" 2> /dev/null && pwd)" || {
 
 tag="v$build_version"
 release_zip="$PWD/.release/AeroSpace-v$build_version.zip"
-sparkle_zip="$PWD/.release/AeroSpace-v$build_version-sparkle.zip"
+sparkle_dmg="$PWD/.release/AeroSpace-v$build_version-sparkle.dmg"
 appcast_path="$PWD/.release/appcast.xml"
 cask_path="$tap_dir/Casks/aerospace.rb"
 
@@ -159,13 +159,13 @@ if test "$skip_build" = 0; then
         --keychain-profile "$keychain_profile"
 fi
 
-for required_zip in "$release_zip" "$sparkle_zip"; do
-    if ! test -f "$required_zip"; then
-        echo "Release ZIP not found: $required_zip" > /dev/stderr
+for required_artifact in "$release_zip" "$sparkle_dmg"; do
+    if ! test -f "$required_artifact"; then
+        echo "Release artifact not found: $required_artifact" > /dev/stderr
         exit 1
     fi
 done
-./script/generate-sparkle-appcast.sh "$sparkle_zip" "$github_repo" "$tag"
+./script/generate-sparkle-appcast.sh "$sparkle_dmg" "$github_repo" "$tag"
 
 if test -n "$(git status --porcelain)"; then
     echo "Release build left tracked or untracked source changes" > /dev/stderr
@@ -182,7 +182,7 @@ fi
 git push origin "$tag"
 
 if gh release view "$tag" --repo "$github_repo" > /dev/null 2>&1; then
-    for asset_path in "$release_zip" "$sparkle_zip" "$appcast_path"; do
+    for asset_path in "$release_zip" "$sparkle_dmg" "$appcast_path"; do
         asset_name="$(basename "$asset_path")"
         asset_sha="$(shasum -a 256 "$asset_path" | awk '{print $1}')"
         published_digest="$(
@@ -203,7 +203,7 @@ else
     create_args=(
         "$tag"
         "$release_zip"
-        "$sparkle_zip"
+        "$sparkle_dmg"
         "$appcast_path"
         --repo "$github_repo"
         --title "AeroSpace $build_version"

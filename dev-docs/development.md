@@ -90,6 +90,20 @@ release archive. If publishing fails after the archive was created, rerun
 
 Fork release versions track the canonical AeroSpace version and append a `cotton` revision. For example, changes based on upstream `0.20.3-Beta` are released as `0.20.3-Beta-cotton.1`, `0.20.3-Beta-cotton.2`, and so on.
 
+### Sparkle signing key
+
+The private update-signing key is stored in the login Keychain under account
+`do.anh.Aerospace`. The repository stores its public key in
+`script/sparkle-public-key.txt`. Keep a secure backup of the private key using
+Sparkle's `generate_keys --account do.anh.Aerospace -x <private-key-file>` tool.
+
+Sparkle updates are distributed as Developer ID signed, notarized DMGs. This
+allows existing installations to accept a replacement Sparkle key when the old
+private key is lost, provided the Developer ID team remains the same. Generate
+the replacement key explicitly, update the public-key file, and regenerate the
+Xcode project before building the release. Validate the update with the previous
+application version before publishing it.
+
 ## IDE
 
 -   You can obviously [open the project in Xcode](#xcode).

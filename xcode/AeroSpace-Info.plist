@@ -23,7 +23,7 @@
 	<key>SUFeedURL</key>
 	<string>https://github.com/quanganhdo/Aerospace/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>lcoRnl79I1UA3HVND/x5vHj8Mk3M4dpghuZNC2ECddQ=</string>
+	<string>Kkq2AwhF4wJnmtrvec2hhwbjV7Ocsa6JZuCUhgLZJKE=</string>
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
 </dict>

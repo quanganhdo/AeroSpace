@@ -69,7 +69,7 @@ cask "$cask_name" do
   auto_updates true
   $conflicts_with_casks
   depends_on arch: :arm64
-  depends_on macos: :ventura # macOS 13
+  depends_on macos: :ventura # #macos13
 
   app "$zip_root_dir/AeroSpace.app"
   binary "#{appdir}/AeroSpace.app/Contents/Helpers/aerospace"

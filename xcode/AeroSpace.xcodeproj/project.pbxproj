@@ -188,8 +188,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B00BE37A79171B0EE995EB83 /* AeroSpace */,
 				1EA38266F360C6A01A4FB8FB /* AeroSpaceCli */,
+				B00BE37A79171B0EE995EB83 /* AeroSpace */,
 			);
 		};
 /* End PBXProject section */
@@ -231,6 +231,7 @@
 		175127AAF914899705FABF12 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				AEROSPACE_CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ARCHS = arm64;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -262,7 +263,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
+				CODE_SIGN_IDENTITY = "$(AEROSPACE_CODE_SIGN_IDENTITY)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -291,8 +292,8 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 6.2;
-				TOOLCHAINS = com.apple.dt.toolchain.XcodeDefault;
+				SWIFT_VERSION = 6;
+				TOOLCHAINS = "${XCODEGEN_TOOLCHAINS}";
 			};
 			name = Debug;
 		};
@@ -333,6 +334,7 @@
 		A991F90908318BCD1655E904 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				AEROSPACE_CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ARCHS = arm64;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -364,7 +366,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "aerospace-codesign-certificate";
+				CODE_SIGN_IDENTITY = "$(AEROSPACE_CODE_SIGN_IDENTITY)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -386,8 +388,8 @@
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 6.2;
-				TOOLCHAINS = com.apple.dt.toolchain.XcodeDefault;
+				SWIFT_VERSION = 6;
+				TOOLCHAINS = "${XCODEGEN_TOOLCHAINS}";
 			};
 			name = Release;
 		};
@@ -407,6 +409,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_LDFLAGS = "$(inherited) $(AEROSPACE_BUILD_INFO_LDFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = do.anh.Aerospace;
 				PRODUCT_NAME = AeroSpace;
 				SDKROOT = macosx;
@@ -423,6 +426,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_LDFLAGS = "$(inherited) $(AEROSPACE_BUILD_INFO_LDFLAGS)";
 				PRODUCT_NAME = aerospace;
 				SDKROOT = macosx;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;

@@ -5,26 +5,32 @@ final class MacWindow: Window {
     let macApp: MacApp
     private var prevUnhiddenProportionalPositionInsideWorkspaceRect: CGPoint?
 
-    @MainActor
-    private init(_ id: UInt32, _ actor: MacApp, lastFloatingSize: CGSize?, parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int) {
+    @MainActor private init(
+        _ id: OpaqueWindowId,
+        _ actor: MacApp,
+        lastFloatingSize: CGSize?,
+        parent: NonLeafTreeNodeObject,
+        adaptiveWeight: CGFloat,
+        index: Int,
+    ) {
         self.macApp = actor
         super.init(id: id, actor, lastFloatingSize: lastFloatingSize, parent: parent, adaptiveWeight: adaptiveWeight, index: index)
     }
 
-    @MainActor static var allWindowsMap: [UInt32: MacWindow] = [:]
+    @MainActor static var allWindowsMap: [OpaqueWindowId: MacWindow] = [:]
     @MainActor static var allWindows: [MacWindow] { Array(allWindowsMap.values) }
 
     @MainActor
     @discardableResult
-    static func getOrRegister(windowId: UInt32, macApp: MacApp) async throws -> MacWindow {
+    static func getOrRegister(windowId: OpaqueWindowId, macApp: MacApp) async throws -> MacWindow {
         if let existing = allWindowsMap[windowId] { return existing }
         let rect = try await macApp.getAxRect(windowId, .cancellable)
         let data = try await unbindAndGetBindingDataForNewWindow(
             windowId,
             macApp,
             isStartup
-                ? (rect?.center.monitorApproximation ?? mainMonitorInfo).activeWorkspace
-                : focus.workspace,
+                ? (rect?.center.monitorApproximation ?? mainMonitorInfo).visibleWorkspace
+                : globalFocus.workspace,
             window: nil,
             .cancellable,
         )
@@ -65,6 +71,10 @@ final class MacWindow: Window {
         try await macApp.dumpWindowAxInfo(windowId: windowId, cm)
     }
 
+    @MainActor func getWindowLevel(_ cm: CancellationMode) async throws -> MacOsWindowLevel? {
+        try await macApp.getWindowLevel(windowId, cm)
+    }
+
     func setNativeFullscreen(_ value: Bool) {
         macApp.setNativeFullscreen(windowId, value)
     }
@@ -83,7 +93,7 @@ final class MacWindow: Window {
         if !skipClosedWindowsCache { cacheClosedWindowIfNeeded() }
         let parent = unbindFromParent().parent
         let deadWindowWorkspace = parent.nodeWorkspace
-        let focus = focus
+        let focus = globalFocus
         if let deadWindowWorkspace, deadWindowWorkspace == focus.workspace ||
             deadWindowWorkspace == prevFocusedWorkspace && prevFocusedWorkspaceDate.distance(to: .now) < 1
         {
@@ -99,6 +109,8 @@ final class MacWindow: Window {
                     }
                 case .macosPopupWindowsContainer, // Don't switch back on popup destruction
                      .workspace, // Workspace is invalid parent for windows
+                     .monitor, // Monitor is invalid parent for windows
+                     .workspacesContainer, // WorkspacesContainer is invalid parent for windows
                      .macosMinimizedWindowsContainer: // Don't switch back on minimized windows destruction
                     break
             }
@@ -106,8 +118,12 @@ final class MacWindow: Window {
     }
 
     override func getTitle(_ cm: CancellationMode) async throws -> String { try await macApp.getAxTitle(windowId, cm) ?? "" }
+
     override func isMacosFullscreen(_ cm: CancellationMode) async throws -> Bool { try await macApp.isMacosNativeFullscreen(windowId, cm) == true }
     override func isMacosMinimized(_ cm: CancellationMode) async throws -> Bool { try await macApp.isMacosNativeMinimized(windowId, cm) == true }
+    override func getMacosWindowNativeState(_ cm: CancellationMode) async throws -> MacosWindowNativeState {
+        try await macApp.getMacosWindowNativeState(windowId, cm) ?? .normal
+    }
 
     @MainActor override func nativeFocus() {
         macApp.nativeFocus(windowId)
@@ -121,7 +137,7 @@ final class MacWindow: Window {
     // todo it's part of the window layout and should be moved to layoutRecursive.swift
     @MainActor
     func hideInCorner(_ corner: OptimalHideCorner) async throws {
-        guard let nodeMonitor else { return }
+        guard let nodeMonitorInfo else { return }
         // Don't accidentally override prevUnhiddenEmulationPosition in case of subsequent `hideInCorner` calls
         if !isHiddenInCorner {
             guard let windowRect = try await getAxRect(.cancellable) else { return }
@@ -144,12 +160,12 @@ final class MacWindow: Window {
                 // Zoom will jump off if you do one pixel offset https://github.com/nikitabobko/AeroSpace/issues/527
                 // todo this ad hoc won't be necessary once I implement optimization suggested by Zalim
                 let onePixelOffset = macApp.appId == .zoom ? .zero : CGPoint(x: 1, y: -1)
-                p = nodeMonitor.visibleRect.bottomLeftCorner + onePixelOffset + CGPoint(x: -s.width, y: 0)
+                p = nodeMonitorInfo.visibleRect.bottomLeftCorner + onePixelOffset + CGPoint(x: -s.width, y: 0)
             case .bottomRightCorner:
                 // Zoom will jump off if you do one pixel offset https://github.com/nikitabobko/AeroSpace/issues/527
                 // todo this ad hoc won't be necessary once I implement optimization suggested by Zalim
                 let onePixelOffset = macApp.appId == .zoom ? .zero : CGPoint(x: 1, y: 1)
-                p = nodeMonitor.visibleRect.bottomRightCorner - onePixelOffset
+                p = nodeMonitorInfo.visibleRect.bottomRightCorner - onePixelOffset
         }
         setAxFrame(p, nil)
     }
@@ -164,7 +180,7 @@ final class MacWindow: Window {
             // Just a small optimization to avoid unnecessary AX calls for non floating windows
             // Tiling windows should be unhidden with layoutRecursive anyway
             case .floatingWindow:
-                let workspaceRect = nodeWorkspace.workspaceMonitor.rect
+                let workspaceRect = nodeWorkspace.workspaceMonitorInfo.rect
                 var newX = workspaceRect.topLeftX + workspaceRect.width * prevUnhiddenProportionalPositionInsideWorkspaceRect.x
                 var newY = workspaceRect.topLeftY + workspaceRect.height * prevUnhiddenProportionalPositionInsideWorkspaceRect.y
                 // todo we probably should replace lastFloatingSize with proper floating window sizing
@@ -211,8 +227,8 @@ extension Window {
 
 // The function is private because it's unsafe. It leaves the window in unbound state
 @MainActor
-private func unbindAndGetBindingDataForNewWindow(_ windowId: UInt32, _ macApp: MacApp, _ workspace: Workspace, window: Window?, _ cm: CancellationMode) async throws -> BindingData {
-    let windowLevel = getWindowLevel(for: windowId)
+private func unbindAndGetBindingDataForNewWindow(_ windowId: OpaqueWindowId, _ macApp: MacApp, _ workspace: Workspace, window: Window?, _ cm: CancellationMode) async throws -> BindingData {
+    let windowLevel = try await macApp.getWindowLevel(windowId, cm)
     return switch try await macApp.getAxUiElementWindowType(windowId, windowLevel, cm) {
         case .popup: BindingData(parent: macosPopupWindowsContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
         case .dialog: BindingData(parent: workspace.floatingWindowsContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
@@ -222,22 +238,15 @@ private func unbindAndGetBindingDataForNewWindow(_ windowId: UInt32, _ macApp: M
 
 // The function is private because it's unsafe. It leaves the window in unbound state
 @MainActor
-private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, window: Window?) -> BindingData {
+func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, window: Window?) -> BindingData {
     if window?.parent != nil {
         window?.unbindFromParent() // It's important to unbind to get correct data from below
     }
-
     if workspace.rootTilingContainer.layout == .dwindle {
         return unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace)
     }
-
-    let mruWindow = workspace.mostRecentWindowRecursive
-    if let mruWindow, let tilingParent = mruWindow.parent as? TilingContainer {
-        return BindingData(
-            parent: tilingParent,
-            adaptiveWeight: WEIGHT_AUTO,
-            index: mruWindow.ownIndex.orDie() + 1,
-        )
+    if let (tilingParent, index) = workspace.mostRecentWindowRecursive?.nearestAliveTilingParent() {
+        return BindingData(parent: tilingParent, adaptiveWeight: WEIGHT_AUTO, index: index + 1)
     } else {
         return BindingData(
             parent: workspace.rootTilingContainer,
@@ -251,16 +260,20 @@ private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, w
 func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Workspace) -> BindingData {
     let rootTilingContainer = workspace.rootTilingContainer
 
-    if rootTilingContainer.children.isEmpty {
+    if rootTilingContainer.inhabitedChildren.isEmpty {
         return BindingData(
             parent: workspace.rootTilingContainer,
             adaptiveWeight: WEIGHT_AUTO,
             index: INDEX_BIND_LAST,
         )
     } else {
-        if let mru = workspace.mostRecentWindowRecursive {
+        var mru: TreeNode? = rootTilingContainer
+        while let container = mru as? TilingContainer {
+            mru = container.mostRecentInhabitedChild
+        }
+        if let mru {
             if let (parentContainer, splitTarget) = findNearestDwindleSlot(from: mru) {
-                if parentContainer.children.count == 1 {
+                if parentContainer.inhabitedChildren.count == 1 {
                     return BindingData(
                         parent: parentContainer,
                         adaptiveWeight: WEIGHT_AUTO,
@@ -268,7 +281,7 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
                     )
                 }
 
-                if parentContainer.children.count == 2 {
+                if parentContainer.inhabitedChildren.count == 2 {
                     let hasAppliedLayout = splitTarget.lastAppliedLayoutVirtualRect != nil
                     let previousBinding = splitTarget.unbindFromParent()
 
@@ -307,7 +320,7 @@ func unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(_ workspace: Work
 private func findNearestDwindleSlot(from node: TreeNode) -> (parent: TilingContainer, slot: TreeNode)? {
     var slot = node
     while let parent = slot.parent as? TilingContainer {
-        if parent.layout == .dwindle {
+        if parent.layout == .dwindle && parent.lifeStatus == .alive {
             return (parent, slot)
         }
         slot = parent
@@ -333,7 +346,7 @@ func runOnWindowDetected(ifConventional window: Window) async {
                     .run(.defaultEnv.withWindowId(window.windowId), .emptyStdin)
             }
             _ = await onWindowDetected(.defaultEnv, CmdIoImpl.emptyStdinIgnoringOut, window)
-        case .macosPopupWindowsContainer, .unbound:
+        case .macosPopupWindowsContainer, nil:
             break
     }
 }

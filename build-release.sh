@@ -30,14 +30,16 @@ fi
 
 ./generate.sh
 ./script/check-uncommitted-files.sh
-./generate.sh \
-    --build-version "$build_version" \
-    --build-number "$build_number" \
-    --codesign-identity "$codesign_identity" \
-    --generate-git-hash
+
+build_info_file="$PWD/.build-info.txt"
+printf '%s\n%s\n%s\n' "$build_version" "$(git rev-parse HEAD)" "$(git rev-parse --short HEAD)" > "$build_info_file"
 
 swift_build_cli=(build -c release --arch arm64 --product aerospace)
-swift "${swift_build_cli[@]}" -Xswiftc -warnings-as-errors # CLI
+swift "${swift_build_cli[@]}" -Xswiftc -warnings-as-errors \
+    -Xlinker -sectcreate \
+    -Xlinker __TEXT \
+    -Xlinker __aero_build \
+    -Xlinker "$build_info_file"
 cli_bin_path="$(swift "${swift_build_cli[@]}" --show-bin-path)"
 
 rm -rf .release && mkdir .release
@@ -55,15 +57,24 @@ cd ./xcode
         -configuration "$xcode_configuration" \
         -derivedDataPath .xcode-build \
         ARCHS=arm64 \
+        MARKETING_VERSION="$build_version" \
+        CURRENT_PROJECT_VERSION="$build_number" \
+        AEROSPACE_CODE_SIGN_IDENTITY="$codesign_identity" \
+        AEROSPACE_BUILD_INFO_LDFLAGS="-sectcreate __TEXT __aero_build $build_info_file" \
         "${extra_xcodebuild_args[@]}"
 cd -
-
-git checkout .
 
 /usr/bin/ditto --noclone --arch arm64 \
     "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" \
     .release/AeroSpace.app
 cp "$cli_bin_path/aerospace" .release
+
+# Binary reproducibility: strip non-portable rpaths
+# https://github.com/swiftlang/swift-package-manager/issues/10760
+xcrun objdump --macho --rpaths --no-leading-headers --arch all .release/aerospace | grep -vE '^(@|/usr/lib/swift$)' | sort -u |
+    while IFS= read -r rpath; do
+        install_name_tool -delete_rpath "$rpath" .release/aerospace
+    done
 
 ################
 ### SIGN CLI ###
@@ -85,37 +96,7 @@ codesign "${codesign_args[@]}" .release/AeroSpace.app
 ### VALIDATE ###
 ################
 
-required_app_files=(
-    .release/AeroSpace.app/Contents/MacOS/AeroSpace
-    .release/AeroSpace.app/Contents/Helpers/aerospace
-    .release/AeroSpace.app/Contents/Resources/default-config.toml
-    .release/AeroSpace.app/Contents/Resources/AppIcon.icns
-    .release/AeroSpace.app/Contents/Resources/Assets.car
-    .release/AeroSpace.app/Contents/Info.plist
-)
-for required_file in "${required_app_files[@]}"; do
-    if ! test -e "$required_file"; then
-        echo "Missing required app file: $required_file" > /dev/stderr
-        exit 1
-    fi
-done
-
-check-contains-hash() {
-    hash=$(git rev-parse HEAD)
-    if ! strings "$1" | grep --fixed-string "$hash" > /dev/null; then
-        echo "$1 doesn't contain $hash"
-        exit 1
-    fi
-}
-
-./script/check-arm64-binaries.sh .release/AeroSpace.app .release/aerospace
-
-check-contains-hash .release/AeroSpace.app/Contents/MacOS/AeroSpace
-check-contains-hash .release/AeroSpace.app/Contents/Helpers/aerospace
-check-contains-hash .release/aerospace
-
-codesign --verify --deep --strict --verbose=2 .release/AeroSpace.app
-codesign --verify --strict --verbose=2 .release/aerospace
+./script/validate-release-binaries.sh
 
 ############
 ### PACK ###

@@ -1,12 +1,13 @@
 @testable import AppBundle
 import Common
-import XCTest
+import Testing
 
 @MainActor
-final class LayoutCommandTest: XCTestCase {
-    override func setUp() async throws { setUpWorkspacesForTests() }
+@Suite(.serializedGlobally)
+struct LayoutCommandTest {
+    init() { setUpWorkspacesForTests() }
 
-    func testParse() {
+    @Test func testParse() {
         assertNil(parseCommand("layout v_tiles h_tiles").errorOrNil)
         assertNil(parseCommand("layout tiling").errorOrNil)
         assertNil(parseCommand("layout floating tiling").errorOrNil)
@@ -19,11 +20,11 @@ final class LayoutCommandTest: XCTestCase {
         )
         testParseSingleCommandSucc(
             "layout --root accordion tiles",
-            LayoutCmdArgs(rawArgs: [], toggleBetween: [.accordion, .tiles]).copy(\.root, true),
+            LayoutCmdArgs(rawArgs: [], toggleBetween: [.accordion, .tiles]).with(\.root, true),
         )
         testParseSingleCommandSucc(
             "layout --root dwindle",
-            LayoutCmdArgs(rawArgs: [], toggleBetween: [.dwindle]).copy(\.root, true),
+            LayoutCmdArgs(rawArgs: [], toggleBetween: [.dwindle]).with(\.root, true),
         )
         testParseCommandFail(
             "layout --workspace 2 tiles",
@@ -32,7 +33,7 @@ final class LayoutCommandTest: XCTestCase {
         )
         testParseCommandFail(
             "layout --workspace 2 --window-id 2 tiles",
-            msg: "ERROR: Conflicting options: --window-id, --workspace",
+            msg: "ERROR: Conflicting flags: --window-id, --workspace",
             exitCode: 2,
         )
         testParseCommandFail(
@@ -43,7 +44,7 @@ final class LayoutCommandTest: XCTestCase {
 
         testParseSingleCommandSucc(
             "layout --for-next-detected-window floating",
-            LayoutCmdArgs(rawArgs: [], toggleBetween: [.floating]).copy(\.forNextDetectedWindow, true),
+            LayoutCmdArgs(rawArgs: [], toggleBetween: [.floating]).with(\.forNextDetectedWindow, true),
         )
         testParseCommandFail(
             "layout --for-next-detected-window floating tiling",
@@ -57,27 +58,27 @@ final class LayoutCommandTest: XCTestCase {
         )
         testParseCommandFail(
             "layout --for-next-detected-window --window-id 1 floating",
-            msg: "ERROR: Conflicting options: --for-next-detected-window, --window-id",
+            msg: "ERROR: Conflicting flags. This flag: '--for-next-detected-window' conflicts with these flags: --window-id",
             exitCode: 2,
         )
         testParseCommandFail(
             "layout --for-next-detected-window --workspace 2 floating",
-            msg: "ERROR: Conflicting options: --for-next-detected-window, --workspace",
+            msg: "ERROR: Conflicting flags. This flag: '--for-next-detected-window' conflicts with these flags: --workspace",
             exitCode: 2,
         )
         testParseCommandFail(
             "layout --for-next-detected-window --root floating",
-            msg: "ERROR: Conflicting options: --for-next-detected-window, --root",
+            msg: "ERROR: Conflicting flags. This flag: '--for-next-detected-window' conflicts with these flags: --root",
             exitCode: 2,
         )
         testParseCommandFail(
             "layout --for-next-detected-window --fail-if-noop floating",
-            msg: "ERROR: Conflicting options: --fail-if-noop, --for-next-detected-window",
+            msg: "ERROR: Conflicting flags. This flag: '--for-next-detected-window' conflicts with these flags: --fail-if-noop",
             exitCode: 2,
         )
     }
 
-    func testForNextDetectedWindow_doesNotTouchExistingWindows() async {
+    @Test func testForNextDetectedWindow_doesNotTouchExistingWindows() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -89,7 +90,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.floatingWindows, [])
     }
 
-    func testForNextDetectedWindow_appliesToTheNextDetectedWindow() async {
+    @Test func testForNextDetectedWindow_appliesToTheNextDetectedWindow() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -102,7 +103,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1)]))
     }
 
-    func testForNextDetectedWindow_isConsumedOnlyOnce() async {
+    @Test func testForNextDetectedWindow_isConsumedOnlyOnce() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -116,7 +117,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1), .window(3)]))
     }
 
-    func testForNextDetectedWindow_secondInvocationReplacesTheScheduledLayout() async {
+    @Test func testForNextDetectedWindow_secondInvocationReplacesTheScheduledLayout() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -131,7 +132,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1), .window(2)]))
     }
 
-    func testForNextDetectedWindow_appliedBeforeAndAfterOnWindowDetectedCallbacks() async {
+    @Test func testForNextDetectedWindow_appliedBeforeAndAfterOnWindowDetectedCallbacks() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -151,7 +152,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1)]))
     }
 
-    func testChangeOrientation() async {
+    @Test func testChangeOrientation() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -163,7 +164,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .v_tiles([.window(1), .window(2)]))
     }
 
-    func testChangeLayoutToAccordion() async {
+    @Test func testChangeLayoutToAccordion() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -175,7 +176,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_accordion([.window(1), .window(2)]))
     }
 
-    func testChangeBothLayoutAndOrientation() async {
+    @Test func testChangeBothLayoutAndOrientation() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -187,7 +188,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .v_accordion([.window(1), .window(2)]))
     }
 
-    func testToggleBetween_skipsMatching() async {
+    @Test func testToggleBetween_skipsMatching() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -198,7 +199,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.orientation, .h)
     }
 
-    func testToggleBetween_allMatch_fails() async {
+    @Test func testToggleBetween_allMatch_fails() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -209,7 +210,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1), .window(2)]))
     }
 
-    func testEmptyWorkspace_changeOrientation() async {
+    @Test func testEmptyWorkspace_changeOrientation() async {
         let workspace = Workspace.get(byName: name)
         assertTrue(workspace.isEffectivelyEmpty)
 
@@ -220,7 +221,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.layout, .tiles)
     }
 
-    func testEmptyWorkspace_changeLayout() async {
+    @Test func testEmptyWorkspace_changeLayout() async {
         let workspace = Workspace.get(byName: name)
         assertTrue(workspace.isEffectivelyEmpty)
 
@@ -231,7 +232,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.orientation, .h)
     }
 
-    func testEmptyWorkspace_alreadyMatches_fails() async {
+    @Test func testEmptyWorkspace_alreadyMatches_fails() async {
         let workspace = Workspace.get(byName: name)
         assertTrue(workspace.isEffectivelyEmpty)
 
@@ -242,7 +243,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.orientation, .h)
     }
 
-    func testEmptyWorkspace_floating_fails() async {
+    @Test func testEmptyWorkspace_floating_fails() async {
         let workspace = Workspace.get(byName: name)
         let result = await parseCommand("layout floating").cmdOrDie
             .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
@@ -251,7 +252,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
     }
 
-    func testEmptyWorkspace_tiling_fails() async {
+    @Test func testEmptyWorkspace_tiling_fails() async {
         let workspace = Workspace.get(byName: name)
         let result = await parseCommand("layout tiling").cmdOrDie
             .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
@@ -260,7 +261,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
     }
 
-    func testEmptyWorkspace_tiling_failIfNoop() async {
+    @Test func testEmptyWorkspace_tiling_failIfNoop() async {
         let workspace = Workspace.get(byName: name)
         let result = await parseCommand("layout tiling --fail-if-noop").cmdOrDie
             .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
@@ -269,7 +270,7 @@ final class LayoutCommandTest: XCTestCase {
         assertTrue(workspace.isEffectivelyEmpty)
     }
 
-    func testTilingToFloating() async {
+    @Test func testTilingToFloating() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -279,10 +280,10 @@ final class LayoutCommandTest: XCTestCase {
         await parseCommand("layout floating").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(root.layoutDescription, .h_tiles([.window(2)]))
         assertEquals(workspace.floatingWindows.map(\.windowId), [1])
-        assertEquals(focus.windowOrNil?.windowId, 1)
+        assertEquals(globalFocus.windowOrNil?.windowId, 1)
     }
 
-    func testFloatingToTiling() async {
+    @Test func testFloatingToTiling() async {
         let workspace = Workspace.get(byName: name)
         workspace.floatingWindowsContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -294,7 +295,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.layoutDescription, .h_tiles([.window(1)]))
     }
 
-    func testLayoutTilingOnTiledWindow_isNoop() async {
+    @Test func testLayoutTilingOnTiledWindow_isNoop() async {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -306,7 +307,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(root.layoutDescription, .h_tiles([.window(1), .window(2)]))
     }
 
-    func testLayoutFloatingOnFloatingWindow_isNoop() async {
+    @Test func testLayoutFloatingOnFloatingWindow_isNoop() async {
         let workspace = Workspace.get(byName: name)
         workspace.floatingWindowsContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -317,7 +318,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.floatingWindows.map(\.windowId), [1])
     }
 
-    func testChangeTilingLayoutOnFloatingWindow_fails() async {
+    @Test func testChangeTilingLayoutOnFloatingWindow_fails() async {
         let workspace = Workspace.get(byName: name)
         workspace.floatingWindowsContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -329,7 +330,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.floatingWindows.map(\.windowId), [1])
     }
 
-    func testTogglesAcrossFloatingAndTiling() async {
+    @Test func testTogglesAcrossFloatingAndTiling() async {
         let workspace = Workspace.get(byName: name)
         workspace.floatingWindowsContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -344,7 +345,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.floatingWindows.map(\.windowId), [1])
     }
 
-    func testRoot_changesRootInsteadOfNestedParent() async {
+    @Test func testRoot_changesRootInsteadOfNestedParent() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
                 assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -363,7 +364,7 @@ final class LayoutCommandTest: XCTestCase {
         ]))
     }
 
-    func testRoot_emptyWorkspace_changeLayout() async {
+    @Test func testRoot_emptyWorkspace_changeLayout() async {
         let workspace = Workspace.get(byName: name)
         assertTrue(workspace.isEffectivelyEmpty)
 
@@ -374,18 +375,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.orientation, .h)
     }
 
-    func testRoot_emptyWorkspace_changeLayoutToDwindle() async {
-        let workspace = Workspace.get(byName: name)
-        assertTrue(workspace.isEffectivelyEmpty)
-
-        let result = await parseCommand("layout --root dwindle").cmdOrDie
-            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
-        assertEquals(result.exitCode.rawValue, 0)
-        assertEquals(workspace.rootTilingContainer.layout, .dwindle)
-        assertEquals(workspace.rootTilingContainer.orientation, .h)
-    }
-
-    func testRoot_floatingFocusedWindow_changesRootTilingContainer() async {
+    @Test func testRoot_floatingFocusedWindow_changesRootTilingContainer() async {
         let workspace = Workspace.get(byName: name)
         workspace.floatingWindowsContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -397,7 +387,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.floatingWindows.map(\.windowId), [1])
     }
 
-    func testRoot_macosFullscreenFocusedWindow_changesRootTilingContainer() async {
+    @Test func testRoot_macosFullscreenFocusedWindow_changesRootTilingContainer() async {
         let workspace = Workspace.get(byName: name)
         assertEquals(TestWindow.new(id: 1, parent: workspace.macOsNativeFullscreenWindowsContainer).focusWindow(), true)
 
@@ -407,7 +397,51 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.orientation, .v)
     }
 
-    func testRoot_withWindowIdFlag_targetsThatWindowsWorkspaceRoot() async {
+    @Test func testTiling_mruInsideMustBeFlattenedContainer_bindsOutsideOfIt() async {
+        let workspace = Workspace.get(byName: name)
+        var mruWindow: Window!
+        let root = workspace.rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                TestWindow.new(id: 2, parent: $0).lifeStatus = .dead
+                mruWindow = TestWindow.new(id: 3, parent: $0)
+                $0.lifeStatus = .mustBeFlattened
+            }
+        }
+        TestWindow.new(id: 4, parent: workspace.floatingWindowsContainer)
+        mruWindow.markAsMostRecentChild()
+
+        await parseCommand("layout tiling --window-id 4").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(root.layoutDescription, .h_tiles([.window(1), .h_tiles([.window(2), .window(3)]), .window(4)]))
+    }
+
+    @Test func testWindowInsideMustBeFlattenedContainer_targetsAliveAncestor() async {
+        config.enableNormalizationFlattenContainers = true
+
+        var mustBeFlattened: TilingContainer!
+        let root = Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            mustBeFlattened = TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                TestWindow.new(id: 2, parent: $0).lifeStatus = .dead
+                assertEquals(TestWindow.new(id: 3, parent: $0).focusWindow(), true)
+                $0.lifeStatus = .mustBeFlattened
+            }
+        }
+
+        let noop = await parseCommand("layout horizontal --fail-if-noop").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(noop.exitCode.rawValue, 2)
+        assertEquals(mustBeFlattened.orientation, .v)
+
+        await parseCommand("layout vertical").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(root.orientation, .v)
+        assertEquals(mustBeFlattened.orientation, .v)
+
+        await parseCommand("layout accordion").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(root.layout, .accordion)
+        assertEquals(mustBeFlattened.layout, .tiles)
+    }
+
+    @Test func testRoot_withWindowIdFlag_targetsThatWindowsWorkspaceRoot() async {
         let focusedRoot = Workspace.get(byName: "a").rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
         }
@@ -423,7 +457,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(focusedRoot.layout, .tiles) // Focused workspace must be untouched
     }
 
-    func testRoot_withWorkspaceFlag_targetsThatWorkspace() async {
+    @Test func testRoot_withWorkspaceFlag_targetsThatWorkspace() async {
         let focusedRoot = Workspace.get(byName: "a").rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
         }
@@ -439,7 +473,7 @@ final class LayoutCommandTest: XCTestCase {
         assertEquals(focusedRoot.layout, .tiles) // Focused workspace must be untouched
     }
 
-    func testRoot_toggleBetween_skipsMatching() async {
+    @Test func testRoot_toggleBetween_skipsMatching() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
                 assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
@@ -460,7 +494,7 @@ final class LayoutCommandTest: XCTestCase {
         ]))
     }
 
-    func testRoot_alreadyMatches_fails() async {
+    @Test func testRoot_alreadyMatches_fails() async {
         let root = Workspace.get(byName: name).rootTilingContainer.apply {
             assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
             TestWindow.new(id: 2, parent: $0)
@@ -470,5 +504,93 @@ final class LayoutCommandTest: XCTestCase {
         let result = await parseCommand("layout --root h_tiles").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(root.layoutDescription, .h_tiles([.window(1), .window(2)]))
+    }
+
+    @Test func testRoot_emptyWorkspace_changeLayoutToDwindle() async {
+        let workspace = Workspace.get(byName: name)
+        assertTrue(workspace.isEffectivelyEmpty)
+
+        let result = await parseCommand("layout --root dwindle").cmdOrDie
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(workspace.rootTilingContainer.layout, .dwindle)
+        assertEquals(workspace.rootTilingContainer.orientation, .h)
+    }
+
+    @Test(arguments: ["tiles", "floating", "vertical"])
+    func testNestedLayoutChangePreservesOtherDwindleSlots(layout: String) async {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let nested = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let focused = TestWindow.new(id: 1, parent: nested)
+        let sibling = TestWindow.new(id: 2, parent: nested)
+        let otherSlot = TestWindow.new(id: 3, parent: root, adaptiveWeight: 30)
+        #expect(focused.focusWindow())
+        let otherSlotWeight = otherSlot.getWeight(.h)
+
+        let result = await parseCommand("layout \(layout)").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        #expect(result.exitCode.rawValue == 0)
+        #expect(root.layout == .dwindle)
+        #expect(root.children == [nested, otherSlot])
+        #expect(sibling.parent === nested)
+        #expect(otherSlot.getWeight(.h) == otherSlotWeight)
+        if layout == "floating" {
+            #expect(focused.parent === workspace.floatingWindowsContainer)
+        } else {
+            #expect(focused.parent === nested)
+        }
+    }
+
+    @Test func testRootDwindleConversionRebuildsNestedTilingBranches() async {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        let left = TilingContainer.newVTiles(parent: root, adaptiveWeight: 1, index: INDEX_BIND_LAST)
+        let right = TilingContainer.newVTiles(parent: root, adaptiveWeight: 1, index: INDEX_BIND_LAST)
+        #expect(TestWindow.new(id: 1, parent: left).focusWindow())
+        TestWindow.new(id: 2, parent: left)
+        TestWindow.new(id: 3, parent: right)
+        TestWindow.new(id: 4, parent: right)
+
+        let result = await parseCommand("layout --root dwindle").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        #expect(result.exitCode.rawValue == 0)
+        #expect(root.layoutDescription == .dwindle([
+            .window(1), .dwindle([.window(2), .dwindle([.window(3), .window(4)])]),
+        ]))
+    }
+
+    @Test(arguments: ["dwindle", "tiles"])
+    func testRootDwindleConversionPreservesExcludedWindows(targetLayout: String) async {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = targetLayout == "dwindle" ? .tiles : .dwindle
+        let nested = TilingContainer(parent: root, adaptiveWeight: 1, .v, root.layout, index: INDEX_BIND_LAST)
+        let liveWindow = TestWindow.new(id: 1, parent: nested)
+        let invisibleWindow = TestWindow.new(id: 2, parent: nested)
+        invisibleWindow.lifeStatus = .invisible
+        TestWindow.new(id: 3, parent: root)
+        let floatingWindow = TestWindow.new(id: 4, parent: workspace.floatingWindowsContainer)
+        let fullscreenWindow = TestWindow.new(id: 5, parent: workspace.macOsNativeFullscreenWindowsContainer)
+        let hiddenAppWindow = TestWindow.new(id: 6, parent: workspace.macOsNativeHiddenAppsWindowsContainer)
+        let minimizedWindow = TestWindow.new(id: 7, parent: macosMinimizedWindowsContainer)
+        defer { minimizedWindow.unbindFromParent() }
+        let floatingParent = floatingWindow.parent
+        let fullscreenParent = fullscreenWindow.parent
+        let hiddenAppParent = hiddenAppWindow.parent
+        #expect(liveWindow.focusWindow())
+
+        let result = await parseCommand("layout --root \(targetLayout)").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 0)
+        #expect(workspace.rootTilingContainer.layout == (targetLayout == "dwindle" ? .dwindle : .tiles))
+        #expect(invisibleWindow.parent === nested)
+        #expect(invisibleWindow.lifeStatus == .invisible)
+        #expect(floatingWindow.parent === floatingParent)
+        #expect(fullscreenWindow.parent === fullscreenParent)
+        #expect(hiddenAppWindow.parent === hiddenAppParent)
+        #expect(minimizedWindow.parent === macosMinimizedWindowsContainer)
+        #expect(workspace.rootTilingContainer.allInhabitedLeafWindowsRecursive.map(\.windowId.rawId).sorted() == [1, 3])
     }
 }

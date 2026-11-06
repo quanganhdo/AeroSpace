@@ -1,11 +1,13 @@
 @testable import AppBundle
-import XCTest
+import Common
+import Testing
 
 @MainActor
-final class DwindleInsertionTest: XCTestCase {
-    override func setUp() async throws { setUpWorkspacesForTests() }
+@Suite(.serializedGlobally)
+struct DwindleInsertionTest {
+    init() { setUpWorkspacesForTests() }
 
-    func testInsertionPreservesUnsplitSiblingSize() async throws {
+    @Test func testInsertionPreservesUnsplitSiblingSize() async throws {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer
         root.layout = .dwindle
@@ -25,7 +27,7 @@ final class DwindleInsertionTest: XCTestCase {
         assertRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedRectBeforeInsertion)
     }
 
-    func testNestedInsertionPreservesEveryUnaffectedBranchSize() async throws {
+    @Test func testNestedInsertionPreservesEveryUnaffectedBranchSize() async throws {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer
         root.layout = .dwindle
@@ -55,7 +57,7 @@ final class DwindleInsertionTest: XCTestCase {
         assertRectEquals(rootUnaffectedWindow.lastAppliedLayoutVirtualRect, rootUnaffectedRectBeforeInsertion)
     }
 
-    func testInsertionSplitsNearestDwindleSlotAboveNonDwindleBranch() async throws {
+    @Test func testInsertionSplitsNearestDwindleSlotAboveNonDwindleBranch() async throws {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer
         root.layout = .dwindle
@@ -96,7 +98,7 @@ final class DwindleInsertionTest: XCTestCase {
         assertRectEquals(rootUnaffectedWindow.lastAppliedLayoutVirtualRect, rootUnaffectedRectBeforeInsertion)
     }
 
-    func testInsertionBeforeInitialLayoutUsesBalancedProvisionalWeights() async throws {
+    @Test func testInsertionBeforeInitialLayoutUsesBalancedProvisionalWeights() async throws {
         let workspace = Workspace.get(byName: name)
         let root = workspace.rootTilingContainer
         root.layout = .dwindle
@@ -112,7 +114,58 @@ final class DwindleInsertionTest: XCTestCase {
         assertEquals(splitContainer?.lastAppliedLayoutVirtualRect?.width, unaffectedWindow.lastAppliedLayoutVirtualRect?.width)
     }
 
-    private func insertNewDwindleWindow(id: UInt32, in workspace: Workspace) -> TestWindow {
+    @Test func testInsertionIgnoresInvisibleChildWhenChoosingAndSplittingSlot() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let splitWindow = TestWindow.new(id: 1, parent: root, adaptiveWeight: 70)
+        let unaffectedWindow = TestWindow.new(id: 2, parent: root, adaptiveWeight: 30)
+        let invisibleWindow = TestWindow.new(id: 3, parent: root)
+        invisibleWindow.lifeStatus = .invisible
+        try await workspace.layoutWorkspace()
+        let unaffectedRect = unaffectedWindow.lastAppliedLayoutVirtualRect
+        splitWindow.markAsMostRecentChild()
+        invisibleWindow.markAsMostRecentChild()
+
+        let newWindow = insertNewDwindleWindow(id: 4, in: workspace)
+        try await workspace.layoutWorkspace()
+
+        let splitContainer = try #require(splitWindow.parent as? TilingContainer)
+        #expect(splitContainer !== root)
+        #expect(newWindow.parent === splitContainer)
+        #expect(splitContainer.children == [splitWindow, newWindow])
+        #expect(invisibleWindow.parent === root)
+        #expect(invisibleWindow.lifeStatus == .invisible)
+        assertRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedRect)
+    }
+
+    @Test func testInsertionSplitsAliveSlotAboveMustBeFlattenedDwindleAncestor() async throws {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        root.layout = .dwindle
+        let transparentContainer = TilingContainer(parent: root, adaptiveWeight: 70, .v, .dwindle, index: INDEX_BIND_LAST)
+        let splitWindow = TestWindow.new(id: 1, parent: transparentContainer)
+        let invisibleWindow = TestWindow.new(id: 2, parent: transparentContainer)
+        invisibleWindow.lifeStatus = .invisible
+        transparentContainer.lifeStatus = .mustBeFlattened
+        let unaffectedWindow = TestWindow.new(id: 3, parent: root, adaptiveWeight: 30)
+        try await workspace.layoutWorkspace()
+        let unaffectedRect = unaffectedWindow.lastAppliedLayoutVirtualRect
+        splitWindow.markAsMostRecentChild()
+
+        let newWindow = insertNewDwindleWindow(id: 4, in: workspace)
+        try await workspace.layoutWorkspace()
+
+        let splitContainer = try #require(transparentContainer.parent as? TilingContainer)
+        #expect(splitContainer !== root)
+        #expect(splitContainer.parent === root)
+        #expect(newWindow.parent === splitContainer)
+        #expect(transparentContainer.children == [splitWindow, invisibleWindow])
+        #expect(transparentContainer.lifeStatus == .mustBeFlattened)
+        assertRectEquals(unaffectedWindow.lastAppliedLayoutVirtualRect, unaffectedRect)
+    }
+
+    private func insertNewDwindleWindow(id: OpaqueWindowId, in workspace: Workspace) -> TestWindow {
         let binding = unbindAndGetBindingDataForNewTilingWindowForDwindleLayout(workspace)
         return TestWindow.new(
             id: id,
@@ -125,15 +178,14 @@ final class DwindleInsertionTest: XCTestCase {
 private func assertRectEquals(
     _ actual: Rect?,
     _ expected: Rect?,
-    file: StaticString = #filePath,
-    line: UInt = #line,
+    sourceLocation: SourceLocation = #_sourceLocation,
 ) {
     guard let actual, let expected else {
-        XCTFail("Expected two layout rectangles", file: file, line: line)
+        Issue.record("Expected two layout rectangles", sourceLocation: sourceLocation)
         return
     }
-    assertEquals(actual.topLeftX, expected.topLeftX, additionalMsg: "topLeftX", file: file, line: line)
-    assertEquals(actual.topLeftY, expected.topLeftY, additionalMsg: "topLeftY", file: file, line: line)
-    assertEquals(actual.width, expected.width, additionalMsg: "width", file: file, line: line)
-    assertEquals(actual.height, expected.height, additionalMsg: "height", file: file, line: line)
+    assertEquals(actual.topLeftX, expected.topLeftX, additionalMsg: "topLeftX", sourceLocation: sourceLocation)
+    assertEquals(actual.topLeftY, expected.topLeftY, additionalMsg: "topLeftY", sourceLocation: sourceLocation)
+    assertEquals(actual.width, expected.width, additionalMsg: "width", sourceLocation: sourceLocation)
+    assertEquals(actual.height, expected.height, additionalMsg: "height", sourceLocation: sourceLocation)
 }

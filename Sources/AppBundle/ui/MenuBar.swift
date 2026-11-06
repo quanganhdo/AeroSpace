@@ -18,7 +18,7 @@ public func menuBar(viewModel: TrayMenuModel, updater: SPUUpdater) -> some Scene
                 Button {
                     Task.startUnstructured {
                         try await runLightSession(.menuBarButton, token) {
-                            let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).copy(\.warningsAsErrors, true)
+                            let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).with(\.warningsAsErrors, true)
                             _ = await reloadConfig_nonCancellable(args: args)
                         }
                     }
@@ -154,7 +154,7 @@ func reloadConfigButton(showShortcutGroup: Bool = false, warningsAsErrors: Bool)
         let button = Button("Reload config") {
             Task.startUnstructured {
                 try await runLightSession(.menuBarButton, token) {
-                    let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).copy(\.warningsAsErrors, warningsAsErrors)
+                    let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).with(\.warningsAsErrors, warningsAsErrors)
                     _ = await reloadConfig_nonCancellable(args: args)
                 }
             }

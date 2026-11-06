@@ -22,15 +22,16 @@ struct LayoutCommand: Command {
                 switch window.windowParentCases {
                     case .floatingWindowsContainer(let it):
                         node = .floatingWindowsContainer(it)
-                    case .tilingContainer(let it):
-                        node = .tilingContainer(it)
+                    case .tilingContainer:
+                        guard let (parent, _) = window.nearestAliveTilingParent() else { return .fail(io.err(bugPrompt())) }
+                        node = .tilingContainer(parent)
                     case .macosFullscreenWindowsContainer,
                          .macosHiddenAppsWindowsContainer,
                          .macosMinimizedWindowsContainer:
                         let msg = "Can't change layout for macOS minimized, fullscreen windows or windows or hidden apps. " +
                             "This behavior is subject to change"
                         return .fail(io.err(msg))
-                    case .unbound, .macosPopupWindowsContainer:
+                    case nil, .macosPopupWindowsContainer:
                         return .fail(io.err(bugPrompt()))
                 }
             case nil:
@@ -48,7 +49,13 @@ struct LayoutCommand: Command {
                     return .succ(io.err(msg))
             }
         }
-        bindWindowsToRootLayoutIfLayoutIsDwindle(workspace: target.workspace)
+        switch targetDescription {
+            case .tiles, .accordion, .h_tiles, .v_tiles, .h_accordion, .v_accordion:
+                if node.tilingContainerOrNil === target.workspace.rootTilingContainer {
+                    bindWindowsToRootLayoutIfLayoutIsDwindle(workspace: target.workspace)
+                }
+            default: break
+        }
         switch targetDescription {
             case .h_accordion:
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: .h, node: node)
@@ -65,10 +72,8 @@ struct LayoutCommand: Command {
             case .dwindle:
                 let result = changeTilingLayout(io, targetLayout: .dwindle, targetOrientation: nil, node: node)
                 guard result == .succ else { return result }
-                do {
-                    try await relayoutAllWindows(workspace: target.workspace)
-                } catch {
-                    return .fail(io.err(bugPrompt()))
+                if node.tilingContainerOrNil === target.workspace.rootTilingContainer {
+                    relayoutAllWindows(workspace: target.workspace)
                 }
                 return .succ
             case .horizontal:
@@ -142,16 +147,26 @@ extension LayoutCommand {
     @MainActor func bindWindowsToRootLayoutIfLayoutIsDwindle(workspace: Workspace) {
         let rootTilingContainer = workspace.rootTilingContainer
         guard rootTilingContainer.layout == .dwindle else { return }
-        let allWindows = workspace.allLeafWindowsRecursive
+        let allWindows = workspace.rootTilingContainer.allInhabitedLeafWindowsRecursive
+        let orientation = rootTilingContainer.orientation
         allWindows.forEach { $0.unbindFromParent() }
+        workspace.normalizeContainers()
+        rootTilingContainer.layout = .dwindle
+        rootTilingContainer.changeOrientation(orientation)
         allWindows.forEach { $0.bind(to: rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST) }
     }
 
-    @MainActor func relayoutAllWindows(workspace: Workspace) async throws {
-        let allWindows = workspace.allLeafWindowsRecursive
+    @MainActor func relayoutAllWindows(workspace: Workspace) {
+        let rootTilingContainer = workspace.rootTilingContainer
+        let allWindows = rootTilingContainer.allInhabitedLeafWindowsRecursive
+        let orientation = rootTilingContainer.orientation
         allWindows.forEach { $0.unbindFromParent() }
+        workspace.normalizeContainers()
+        rootTilingContainer.layout = .dwindle
+        rootTilingContainer.changeOrientation(orientation)
         for element in allWindows {
-            try await element.relayoutWindow(on: workspace, .nonCancellable, forceTile: false)
+            let binding = unbindAndGetBindingDataForNewTilingWindow(workspace, window: element)
+            element.bind(to: binding.parent, adaptiveWeight: binding.adaptiveWeight, index: binding.index)
         }
     }
 }

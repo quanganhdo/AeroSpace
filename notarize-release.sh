@@ -33,7 +33,7 @@ if ! security find-identity -v -p codesigning | grep --fixed-string -q "\"$codes
 fi
 
 ./build-docs.sh
-mise exec -- ./build-shell-completion.sh
+./build-shell-completion.sh
 
 build_dir="${AEROSPACE_RELEASE_BUILD_DIR:-.notarization-build}"
 build_info_file="$PWD/.build-info.txt"
